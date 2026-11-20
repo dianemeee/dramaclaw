@@ -3663,7 +3663,7 @@ async def _call_newapi_image_api(
         "model": model,
         "prompt": prompt,
         "n": 1,
-        "response_format": "url",
+        "response_format": "b64_json",
         "watermark": False,
         "metadata": metadata,
     }
@@ -3954,7 +3954,7 @@ async def _call_newapi_image_api(
                 # (60s),避免落入外层 client 的 600s global timeout 拖很久。
                 # 加 phase log 让 hang 时能定位卡在哪。
                 logger.info("DramaClawAPI image GET url start: %s", image_url[:120])
-                async with httpx.AsyncClient(timeout=60.0, follow_redirects=True) as fetch:
+                async with httpx.AsyncClient(timeout=300.0, follow_redirects=True) as fetch:
                     image_response = await fetch.get(image_url)
                 logger.info(
                     "DramaClawAPI image GET url done: status=%d bytes=%d",
