@@ -77,6 +77,7 @@ import {
   useSaveCustomChannel,
   useSaveCustomChannelsBatch,
   useSaveEmbeddingModel,
+  useSaveVideoAnalysisModel,
   useSaveMediaModels,
   useSaveProviderChannels,
   useClearComfyUIConfig,
@@ -90,6 +91,7 @@ import {
   type NewApiDatabaseConfigInput,
   type NewApiChannelType,
   type SavedEmbeddingModelConfig,
+  type SavedVideoAnalysisModelConfig,
   type SavedMediaModelConfig,
   type SavedProviderChannelConfig,
 } from "@/lib/queries/model-gateway";
@@ -687,6 +689,7 @@ function ModelConfigSection({ open }: { open: boolean }) {
                       config?.provisioner?.providerChannels ?? []
                     }
                     savedEmbeddingModel={config?.provisioner?.embeddingModel}
+                    savedVideoAnalysisModel={config?.provisioner?.videoAnalysisModel}
                     savedMediaModels={config?.provisioner?.mediaModels ?? {}}
                   />
                 </>
@@ -710,6 +713,7 @@ function ModelConfigSection({ open }: { open: boolean }) {
                     config?.provisioner?.providerChannels ?? []
                   }
                   savedEmbeddingModel={config?.provisioner?.embeddingModel}
+                  savedVideoAnalysisModel={config?.provisioner?.videoAnalysisModel}
                   savedMediaModels={config?.provisioner?.mediaModels ?? {}}
                   defaultComfyWorkflows={HYBRID_COMFYUI_WORKFLOWS}
                   mediaOnly
@@ -735,6 +739,7 @@ function ModelConfigSection({ open }: { open: boolean }) {
                     config?.provisioner?.providerChannels ?? []
                   }
                   savedEmbeddingModel={config?.provisioner?.embeddingModel}
+                  savedVideoAnalysisModel={config?.provisioner?.videoAnalysisModel}
                   savedMediaModels={config?.provisioner?.mediaModels ?? {}}
                 />
               </div>
@@ -2916,6 +2921,7 @@ function FeatureModelsBlock({
   database,
   savedProviderChannels,
   savedEmbeddingModel,
+  savedVideoAnalysisModel,
   savedMediaModels,
   mediaOnly = false,
   comfyOnly = false,
@@ -2928,6 +2934,7 @@ function FeatureModelsBlock({
   database: NewApiDatabaseConfigInput | undefined;
   savedProviderChannels: SavedProviderChannelConfig[];
   savedEmbeddingModel: SavedEmbeddingModelConfig | undefined;
+  savedVideoAnalysisModel?: SavedVideoAnalysisModelConfig | undefined;
   savedMediaModels: Record<string, SavedMediaModelConfig>;
   mediaOnly?: boolean;
   comfyOnly?: boolean;
@@ -3233,6 +3240,12 @@ function FeatureModelsBlock({
           database={database}
           savedChannelByProvider={savedChannelByProvider}
           savedEmbeddingModel={savedEmbeddingModel}
+        />
+      ) : null}
+
+      {!mediaOnly ? (
+        <VideoAnalysisModelBlock
+          savedVideoAnalysisModel={savedVideoAnalysisModel}
         />
       ) : null}
 
@@ -3623,6 +3636,113 @@ function EmbeddingModelBlock({
           {t("settings.modelConfig.embeddingModel.save")}
         </Button>
       </div>
+    </div>
+  );
+}
+
+const DEFAULT_VIDEO_ANALYSIS_MODEL = "google/gemini-2.5-flash";
+
+/**
+ * Video-analysis model picker (Settings → Models & Channels).
+ * A single OpenRouter slug used only for reference-video analysis; the
+ * Agent model is untouched. Stored locally via
+ * POST /custom/newapi/video-analysis-model (no NewAPI channel).
+ */
+function VideoAnalysisModelBlock({
+  savedVideoAnalysisModel,
+}: {
+  savedVideoAnalysisModel: SavedVideoAnalysisModelConfig | undefined;
+}) {
+  const localSavedModel = useSettingsStore(
+    (s) => s.featureModelConfig.videoAnalysisModel,
+  );
+  const setVideoAnalysisModel = useSettingsStore(
+    (s) => s.setVideoAnalysisModel,
+  );
+  const saveVideoAnalysisModel = useSaveVideoAnalysisModel();
+  const [localModel, setLocalModel] = useState(
+    localSavedModel ??
+      savedVideoAnalysisModel?.model ??
+      DEFAULT_VIDEO_ANALYSIS_MODEL,
+  );
+  const [saveError, setSaveError] = useState("");
+  const savedKey = JSON.stringify(savedVideoAnalysisModel ?? null);
+  const localSavedKey = JSON.stringify(localSavedModel ?? null);
+
+  useEffect(() => {
+    const next =
+      localSavedModel ??
+      savedVideoAnalysisModel?.model ??
+      DEFAULT_VIDEO_ANALYSIS_MODEL;
+    setLocalModel((current) => (current === next ? current : next));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [localSavedKey, savedKey]);
+
+  const handleSave = async () => {
+    const model = localModel.trim();
+    if (!model) {
+      toast.error("Enter a video-analysis model, e.g. google/gemini-2.5-flash.");
+      return;
+    }
+    setSaveError("");
+    try {
+      const res = await saveVideoAnalysisModel.mutateAsync({ model });
+      if (!res.ok) {
+        const message = getResponseErrorMessage(
+          res,
+          "Could not save the video-analysis model.",
+        );
+        setSaveError(message);
+        toast.error(message);
+        return;
+      }
+      setVideoAnalysisModel(res.data.videoAnalysisModel.model);
+      setLocalModel(res.data.videoAnalysisModel.model);
+      toast.success("Video-analysis model saved.");
+    } catch (error) {
+      const message = await getRequestErrorMessage(
+        error,
+        "Could not save the video-analysis model.",
+      );
+      setSaveError(message);
+      toast.error(message);
+    }
+  };
+
+  return (
+    <div className="mt-6">
+      <h4 className="text-xs font-medium text-foreground">
+        Video analysis model
+      </h4>
+      <p className="mt-1.5 text-[11px] leading-relaxed text-muted-foreground">
+        Model used when Xia Director analyses a reference video link
+        (YouTube / TikTok / Instagram). YouTube links go straight to this
+        model; other links are downloaded first, then sent as a file.
+        Default: google/gemini-2.5-flash. The Agent model is not affected.
+      </p>
+      <div className="mt-3 flex items-center gap-2">
+        <Input
+          value={localModel}
+          onChange={(event) => setLocalModel(event.target.value)}
+          placeholder="google/gemini-2.5-flash"
+          className="h-8 flex-1 rounded-md border-input/80 focus-visible:border-ring/70 focus-visible:ring-1 focus-visible:ring-ring/30"
+        />
+        <Button
+          type="button"
+          size="sm"
+          className="shrink-0"
+          onClick={() => void handleSave()}
+          disabled={saveVideoAnalysisModel.isPending}
+        >
+          {saveVideoAnalysisModel.isPending ? (
+            <Loader2 className="size-3.5 animate-spin" />
+          ) : null}
+          Save
+        </Button>
+      </div>
+      {saveError ? (
+        <p className="mt-2 text-[11px] text-destructive">{saveError}</p>
+      ) : null}
     </div>
   );
 }

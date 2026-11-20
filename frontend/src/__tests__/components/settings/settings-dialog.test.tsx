@@ -100,6 +100,7 @@ vi.mock("@/lib/queries/model-gateway", () => ({
   useSaveCustomChannel: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useSaveCustomChannelsBatch: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useSaveEmbeddingModel: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useSaveVideoAnalysisModel: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useSaveMediaModels: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useSaveProviderChannels: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useSaveMediaRelayConfig: () => ({

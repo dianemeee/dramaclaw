@@ -142,6 +142,7 @@ import {
   type DirectorVoicePolicy,
 } from "@/features/superchat/director-run-mode";
 import { ComposerWaitingStatus } from "@/features/superchat/composer-waiting-status";
+import { VideoReferencePanel } from "@/features/superchat/VideoReferencePanel";
 import { ChatTaskStatusBar } from "@/features/superchat/chat-task-status-bar";
 import { ChatHistoryNotice } from "@/features/superchat/chat-history-notice";
 import { calculateTimelineContextDelta } from "@/features/superchat/timeline-scroll";
@@ -16268,6 +16269,16 @@ export function SuperChatPanel({
               agentIds={[effectiveFreezoneAgentId]}
             />
           )}
+          {/* Video reference analysis: optional, both Freezone and Series.
+              The panel calls the backend endpoint and, on "Send to Xia
+              Director", fills the composer draft below (user presses Send). */}
+          <VideoReferencePanel
+            projectId={params.project ?? null}
+            onSendToDirector={(text) => {
+              setDraft(text);
+              draftInputRef.current?.focus();
+            }}
+          />
           <div
             ref={composerShellRef}
             className={cn(

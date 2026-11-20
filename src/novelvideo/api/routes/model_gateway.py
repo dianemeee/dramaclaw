@@ -38,6 +38,8 @@ from novelvideo.model_gateway_settings import (
     save_newapi_media_model_mappings,
     get_newapi_media_model_mappings,
     get_newapi_embedding_model_config,
+    get_video_analysis_model_config,
+    save_video_analysis_model_config,
     save_newapi_provider_channels,
     get_newapi_provider_channel,
     get_newapi_provider_channels,
@@ -332,6 +334,15 @@ class SaveEmbeddingModelBody(BaseModel):
     send_dimensions: bool = Field(default=True, alias="sendDimensions")
 
 
+class SaveVideoAnalysisModelBody(BaseModel):
+    """Persisted video-analysis model (OpenRouter slug, e.g.
+    ``google/gemini-2.5-flash``). Stored locally only — no NewAPI channel
+    is created for it, because the video call goes straight to OpenRouter.
+    """
+
+    model: str
+
+
 def _permission_error(exc: PermissionError) -> HTTPException:
     return HTTPException(status_code=403, detail=str(exc))
 
@@ -532,6 +543,7 @@ def _provisioner_status() -> dict[str, Any]:
         "providerChannels": [],
         "mediaModels": {},
         "embeddingModel": {},
+        "videoAnalysisModel": {},
         "relayBaseUrl": "",
     }
 
@@ -1116,6 +1128,7 @@ async def save_custom_newapi_provider_channels(
             save_newapi_media_model_mappings(media_mappings)
         media_models = get_newapi_media_model_mappings()
         embedding_model = get_newapi_embedding_model_config()
+        video_analysis_model = get_video_analysis_model_config()
     except PermissionError as exc:
         raise _permission_error(exc) from exc
     except ValueError as exc:
@@ -1145,6 +1158,7 @@ async def save_custom_newapi_provider_channels(
             ],
             "mediaModels": media_models,
             "embeddingModel": embedding_model or None,
+            "videoAnalysisModel": video_analysis_model or None,
         },
     }
 
@@ -1477,6 +1491,28 @@ async def save_custom_newapi_embedding_model(
             "result": item,
         },
     }
+
+
+@router.post("/custom/newapi/video-analysis-model")
+async def save_custom_newapi_video_analysis_model(
+    body: SaveVideoAnalysisModelBody,
+) -> dict[str, Any]:
+    """Save the video-analysis model (OpenRouter slug).
+
+    Unlike the embedding model this creates no NewAPI channel: the model
+    is only a slug stored in the local settings DB and read back by
+    ``resolve_video_analysis_model`` when a reference video is analysed.
+    """
+    try:
+        require_ce_gateway_management()
+        saved = save_video_analysis_model_config(model=body.model)
+    except PermissionError as exc:
+        raise _permission_error(exc) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+    return {"ok": True, "data": {"videoAnalysisModel": saved}}
 
 
 @router.post("/custom/newapi/media-models")

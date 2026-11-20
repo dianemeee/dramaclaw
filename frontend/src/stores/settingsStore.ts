@@ -136,6 +136,8 @@ export interface FeatureModelSettings {
   mediaModels: Record<string, MediaModelEntry>;
   /** Cognee embedding 模型配置；undefined 表示沿用后端默认。 */
   embeddingModel?: EmbeddingModelEntry;
+  /** 视频分析模型（OpenRouter slug）；undefined 表示沿用后端默认。 */
+  videoAnalysisModel?: string;
   /** provider -> 上游供应商 Key。旧版字段，保留用于迁移和兼容。 */
   providerKeys: Record<string, string>;
   /** provider -> 渠道级配置。 */
@@ -146,6 +148,7 @@ export const DEFAULT_FEATURE_MODEL_SETTINGS: FeatureModelSettings = {
   featureModels: {},
   mediaModels: {},
   embeddingModel: undefined,
+  videoAnalysisModel: undefined,
   providerKeys: {},
   providerChannels: {},
 };
@@ -272,7 +275,11 @@ interface SettingsState {
   hydrateFeatureModelConfigFromBackend: (
     snapshot: Pick<
       FeatureModelSettings,
-      'providerChannels' | 'providerKeys' | 'mediaModels' | 'embeddingModel'
+      | 'providerChannels'
+      | 'providerKeys'
+      | 'mediaModels'
+      | 'embeddingModel'
+      | 'videoAnalysisModel'
     >,
     snapshotKey: string
   ) => void;
@@ -287,6 +294,10 @@ interface SettingsState {
   ) => void;
   setEmbeddingModel: (
     model: EmbeddingModelEntry | undefined,
+    options?: FeatureModelConfigMutationOptions
+  ) => void;
+  setVideoAnalysisModel: (
+    model: string | undefined,
     options?: FeatureModelConfigMutationOptions
   ) => void;
   setProviderUpstreamKey: (
@@ -446,6 +457,22 @@ function normalizeFeatureModelSettings(
     }
   }
 
+  let videoAnalysisModel: string | undefined;
+  const rawVideoAnalysisModel = (
+    input as { videoAnalysisModel?: unknown } | null | undefined
+  )?.videoAnalysisModel;
+  if (rawVideoAnalysisModel && typeof rawVideoAnalysisModel === "object") {
+    const entry = rawVideoAnalysisModel as { model?: unknown };
+    if (typeof entry.model === "string" && entry.model.trim()) {
+      videoAnalysisModel = entry.model.trim();
+    }
+  } else if (
+    typeof rawVideoAnalysisModel === "string" &&
+    rawVideoAnalysisModel.trim()
+  ) {
+    videoAnalysisModel = rawVideoAnalysisModel.trim();
+  }
+
   const providerKeys: Record<string, string> = {};
   const rawKeys = (input as { providerKeys?: unknown } | null | undefined)?.providerKeys;
   if (rawKeys && typeof rawKeys === 'object') {
@@ -491,7 +518,7 @@ function normalizeFeatureModelSettings(
     }
   }
 
-  return { featureModels, mediaModels, embeddingModel, providerKeys, providerChannels };
+  return { featureModels, mediaModels, embeddingModel, videoAnalysisModel, providerKeys, providerChannels };
 }
 
 export function normalizeMediaModelEntries(
@@ -766,6 +793,21 @@ export const useSettingsStore = create<SettingsState>()(
                     : {}),
                 }
               : undefined,
+          },
+        })),
+      setVideoAnalysisModel: (model, options) =>
+        set((state) => ({
+          ...nextFeatureModelConfigMutationMeta(
+            state.featureModelConfigUserRevision,
+            state.featureModelConfigProfileSyncPending,
+            options
+          ),
+          featureModelConfig: {
+            ...state.featureModelConfig,
+            videoAnalysisModel:
+              typeof model === "string" && model.trim()
+                ? model.trim()
+                : undefined,
           },
         })),
       setProviderUpstreamKey: (provider, key, options) =>

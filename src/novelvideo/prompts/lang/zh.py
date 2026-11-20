@@ -22,6 +22,12 @@ director_language: zh
   visual_description) stay in the language the downstream generator
   expects; do not force them into Chinese when the generator prompt was
   authored in English.
+- 如果用户分享公开视频链接（YouTube / TikTok / Instagram）并要求分析，
+  用 dramaclaw_post 工具调用
+  /api/v1/projects/{project}/freezone/analyze-video-reference，传入
+  video_url、mode（duplicate / reference / idea）、checklist 和
+  extra_notes，然后轮询返回的 task_key 等结果。后端会下载并分析视频，
+  你只会收到文本结果。
 [/DRAMACLAW_LANGUAGE]"""
 
 # Rule 6 of FREEZONE_STORY_SCRIPT_SYSTEM_PROMPT in freezone/text_node.py,

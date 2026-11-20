@@ -26,6 +26,12 @@ director_language: id
   visual_description) must stay in English, because the image / video
   generators are prompted in English. Do not translate those fields into
   Indonesian.
+- If the user shares a public video link (YouTube / TikTok / Instagram)
+  and asks for an analysis, use the dramaclaw_post tool on
+  /api/v1/projects/{project}/freezone/analyze-video-reference with
+  video_url, mode (duplicate / reference / idea), checklist and
+  extra_notes, then poll the returned task_key for the result. The
+  backend downloads the video and analyses it; you only receive text.
 [/DRAMACLAW_LANGUAGE]"""
 
 # Indonesian counterpart of rule 6 of FREEZONE_STORY_SCRIPT_SYSTEM_PROMPT

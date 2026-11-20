@@ -867,6 +867,44 @@ class FreezoneAnalyzeVideoStoryRequest(BaseModel):
     )
 
 
+class FreezoneAnalyzeVideoReferenceRequest(BaseModel):
+    """Analyse a public social video link (YouTube / TikTok / Instagram).
+
+    Unlike ``analyze-video-story`` this takes an external URL, not a
+    project-local /static/... file. All fields except ``video_url`` are
+    optional; empty means "analyse everything, reference mode".
+    """
+
+    video_url: str = Field(
+        description="Public video link, e.g. a YouTube / TikTok / Instagram URL",
+        examples=["https://www.youtube.com/watch?v=dQw4w9WgXcQ"],
+    )
+    mode: str = Field(
+        default="reference",
+        description="duplicate | reference | idea",
+    )
+    checklist: list[str] = Field(
+        default_factory=list,
+        description=(
+            "Aspects to analyse, any of: hook, pacing, transitions, "
+            "dialogue, scene_structure, camera, music, characters, "
+            "visual_style. Empty = analyse all."
+        ),
+    )
+    extra_notes: str = Field(
+        default="",
+        description="Free text: anything extra to analyse from this video",
+    )
+    model: Optional[str] = Field(
+        default=None,
+        description=(
+            "Video-analysis model (OpenRouter slug). Empty = the model "
+            "from Settings, else the VIDEO_ANALYSIS_MODEL env var, else "
+            "google/gemini-2.5-flash."
+        ),
+    )
+
+
 class FreezoneVideoBreakdownRequest(BaseModel):
     """逐帧拉片请求：把一条视频拆成分镜 / 动态 / 音乐三个维度的参考素材。
 

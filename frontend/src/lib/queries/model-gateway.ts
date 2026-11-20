@@ -100,6 +100,11 @@ export interface SavedEmbeddingModelConfig {
   internalModel?: string;
 }
 
+/** Persisted video-analysis model (OpenRouter slug). */
+export interface SavedVideoAnalysisModelConfig {
+  model: string;
+}
+
 export interface ModelGatewayProvisionerConfig {
   enabled: boolean;
   adminBaseUrl: string;
@@ -111,6 +116,7 @@ export interface ModelGatewayProvisionerConfig {
   providerChannels?: SavedProviderChannelConfig[];
   mediaModels?: Record<string, SavedMediaModelConfig>;
   embeddingModel?: SavedEmbeddingModelConfig;
+  videoAnalysisModel?: SavedVideoAnalysisModelConfig;
   database?: NewApiDatabaseStatus;
 }
 
@@ -339,6 +345,10 @@ export interface SaveMediaModelsResult extends SaveCustomChannelsBatchResult {
 export interface SaveEmbeddingModelResult {
   embeddingModel: SavedEmbeddingModelConfig;
   result: CustomChannelWriteResult;
+}
+
+export interface SaveVideoAnalysisModelResult {
+  videoAnalysisModel: SavedVideoAnalysisModelConfig;
 }
 
 export function useModelGatewayConfig(enabled = true) {
@@ -598,6 +608,7 @@ export function useSaveProviderChannels() {
               channels: SavedProviderChannelConfig[];
               mediaModels: Record<string, SavedMediaModelConfig>;
               embeddingModel: SavedEmbeddingModelConfig | null;
+              videoAnalysisModel: SavedVideoAnalysisModelConfig | null;
             }>
           | ErrorResponse
           | FastApiErrorResponse
@@ -621,6 +632,8 @@ export function useSaveProviderChannels() {
                           mediaModels: response.data.mediaModels,
                           embeddingModel:
                             response.data.embeddingModel ?? undefined,
+                          videoAnalysisModel:
+                            response.data.videoAnalysisModel ?? undefined,
                         }
                       : current.data.provisioner,
                   },
@@ -745,6 +758,23 @@ export function useSaveEmbeddingModel() {
           timeout: 120_000,
         })
         .json<OkResponse<SaveEmbeddingModelResult> | ErrorResponse>(),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.modelGateway() });
+    },
+  });
+}
+
+/** 保存视频分析模型（OpenRouter slug）；只存本地配置，不建 NewAPI 渠道。 */
+export function useSaveVideoAnalysisModel() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { model: string }) =>
+      api
+        .post("api/v1/model-gateway/custom/newapi/video-analysis-model", {
+          json: input,
+          timeout: 60_000,
+        })
+        .json<OkResponse<SaveVideoAnalysisModelResult> | ErrorResponse>(),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.modelGateway() });
     },

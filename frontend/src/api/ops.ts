@@ -355,6 +355,7 @@ export interface FreezoneJobRef {
     | "freezone_text_translate"
     | "freezone_story_script"
     | "freezone_analyze_video_story"
+    | "freezone_video_reference"
     | "stage_asset";
   job_id: string;
   task_key: string;
@@ -2577,6 +2578,40 @@ export async function submitFreezoneAnalyzeVideoStory(
   if (payload.durationSec != null) body.duration_sec = payload.durationSec;
   return await apiCall<FreezoneJobRef>(
     `projects/${encodeURIComponent(project)}/freezone/analyze-video-story`,
+    { method: "POST", json: body },
+  );
+}
+
+// /freezone/analyze-video-reference --------------------------------------- //
+
+export type VideoReferenceMode = "duplicate" | "reference" | "idea";
+
+export interface FreezoneAnalyzeVideoReferencePayload {
+  /** Public social video link (YouTube / TikTok / Instagram / ...). */
+  videoUrl: string;
+  /** duplicate | reference | idea; defaults to reference backend-side. */
+  mode?: VideoReferenceMode;
+  /** Aspects to analyse; empty = analyse all. */
+  checklist?: string[];
+  /** Free text: anything extra to analyse from this video. */
+  extraNotes?: string;
+  /** Video-analysis model (OpenRouter slug); empty = Settings default. */
+  model?: string;
+}
+
+export async function submitFreezoneAnalyzeVideoReference(
+  project: string,
+  payload: FreezoneAnalyzeVideoReferencePayload,
+): Promise<FreezoneJobRef> {
+  const body: Record<string, unknown> = {
+    video_url: payload.videoUrl,
+    mode: payload.mode ?? "reference",
+    checklist: payload.checklist ?? [],
+    extra_notes: payload.extraNotes ?? "",
+  };
+  if (payload.model) body.model = payload.model;
+  return await apiCall<FreezoneJobRef>(
+    `projects/${encodeURIComponent(project)}/freezone/analyze-video-reference`,
     { method: "POST", json: body },
   );
 }

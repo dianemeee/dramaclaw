@@ -18,6 +18,12 @@ director_language: en
 - Visual generation prompts (image / video prompt fields such as
   visual_description) should also be written in English, which is what
   the image / video generators expect.
+- If the user shares a public video link (YouTube / TikTok / Instagram)
+  and asks for an analysis, use the dramaclaw_post tool on
+  /api/v1/projects/{project}/freezone/analyze-video-reference with
+  video_url, mode (duplicate / reference / idea), checklist and
+  extra_notes, then poll the returned task_key for the result. The
+  backend downloads the video and analyses it; you only receive text.
 [/DRAMACLAW_LANGUAGE]"""
 
 # English counterpart of rule 6 of FREEZONE_STORY_SCRIPT_SYSTEM_PROMPT

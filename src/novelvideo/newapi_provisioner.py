@@ -17,6 +17,7 @@ import httpx
 
 from novelvideo.model_gateway_settings import (
     build_newapi_embedding_model_status,
+    build_newapi_video_analysis_model_status,
     build_newapi_media_model_mappings_status,
     build_newapi_provider_channels_status,
     build_newapi_database_status,
@@ -1638,5 +1639,6 @@ def build_provisioner_status() -> dict[str, Any]:
         "providerChannels": build_newapi_provider_channels_status(),
         "mediaModels": build_newapi_media_model_mappings_status(),
         "embeddingModel": build_newapi_embedding_model_status(),
+        "videoAnalysisModel": build_newapi_video_analysis_model_status(),
         "relayBaseUrl": normalize_relay_base_url(cfg.admin_base_url),
     }

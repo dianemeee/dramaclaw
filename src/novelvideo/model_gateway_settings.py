@@ -1008,6 +1008,54 @@ def build_newapi_embedding_model_status() -> dict[str, Any]:
     return get_newapi_embedding_model_config()
 
 
+def build_newapi_video_analysis_model_status() -> dict[str, Any]:
+    return get_video_analysis_model_config()
+
+
+#: Settings key holding the persisted video-analysis model
+#: (``{"model": "<openrouter slug>"}``). The model is used only for
+#: reference-video analysis; the Agent model is never touched.
+VIDEO_ANALYSIS_MODEL_SETTINGS_KEY = "custom_video_analysis_model"
+DEFAULT_VIDEO_ANALYSIS_MODEL = "google/gemini-2.5-flash"
+
+
+def _decode_video_analysis_model_config(value: str | None) -> dict[str, Any]:
+    if not value:
+        return {}
+    try:
+        raw = json.loads(value)
+    except json.JSONDecodeError:
+        return {}
+    if not isinstance(raw, dict):
+        return {}
+    model = str(raw.get("model") or "").strip()
+    if not model:
+        return {}
+    return {"model": model}
+
+
+def get_video_analysis_model_config() -> dict[str, Any]:
+    settings = get_model_gateway_settings()
+    return _decode_video_analysis_model_config(
+        settings.get(VIDEO_ANALYSIS_MODEL_SETTINGS_KEY)
+    )
+
+
+def save_video_analysis_model_config(*, model: str) -> dict[str, Any]:
+    normalized_model = str(model or "").strip()
+    if not normalized_model:
+        raise ValueError("model is required for video analysis")
+    config = {"model": normalized_model}
+    _write_many(
+        {
+            VIDEO_ANALYSIS_MODEL_SETTINGS_KEY: json.dumps(
+                config, ensure_ascii=False, separators=(",", ":")
+            )
+        }
+    )
+    return config
+
+
 def build_newapi_provider_channels_status() -> list[dict[str, Any]]:
     return [
         {

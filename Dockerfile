@@ -73,6 +73,11 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends ffmpeg bubblewrap \
     && rm -rf /var/lib/apt/lists/*
 
+# yt-dlp for reference-video analysis (freezone_video_reference): download
+# TikTok / Instagram / other social videos once, then send the file to the
+# video model. YouTube links go straight to the model and never touch this.
+RUN pip install --no-cache-dir "yt-dlp>=2025.1.1"
+
 # deploy/codex/ is copied again, in full, further down as part of the
 # application source (COPY deploy ./deploy); this narrow copy only makes the
 # verifier available here, before WORKDIR /app, for the identity check below.

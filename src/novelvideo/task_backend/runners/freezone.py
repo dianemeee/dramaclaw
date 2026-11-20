@@ -569,6 +569,12 @@ FREEZONE_LEAF_EGRESS: dict[str, LeafEgressRule] = {
     "run_freezone_analyze_shots": LeafEgressRule(
         "novelvideo.freezone.jobs", LeafEgress.NETWORK, "EG-18b"
     ),
+    # Reference-video analysis: direct video input to OpenRouter
+    # (YouTube URL straight through, other URLs downloaded once with
+    # yt-dlp); frames fallback goes through the NewAPI vision gateway.
+    "analyze_video_reference": LeafEgressRule(
+        "novelvideo.freezone.video_reference", LeafEgress.NETWORK, "EG-18b"
+    ),
     # 逐帧拉片：本地 ffmpeg 抽帧/切片 + 一跳 Vision，出网点与 analyze_shots 相同。
     "run_freezone_video_breakdown": LeafEgressRule(
         "novelvideo.freezone.jobs", LeafEgress.NETWORK, "EG-18b"
@@ -1479,6 +1485,69 @@ def run_freezone_video_story(
     envelope: dict[str, Any], ctx: ProjectContext
 ) -> dict[str, Any]:
     return _run_cancellable(envelope, _run_freezone_video_story_async(envelope, ctx))
+
+
+async def _run_freezone_video_reference_async(
+    envelope: dict[str, Any],
+    ctx: ProjectContext,
+) -> dict[str, Any]:
+    """Download / analyse one reference video URL, save analysis.json.
+
+    Works in both Freezone and Series: the model and reply language are
+    resolved server-side (persisted setting / env vars), never from the
+    chat ``context`` the frontend only forwards in Freezone.
+    """
+    import json
+
+    from novelvideo.api.deps import make_static_url_for_context
+    from novelvideo.freezone.jobs import ensure_freezone_dirs
+    from novelvideo.freezone.paths import outputs_dir
+    from novelvideo.freezone.video_reference import analyze_video_reference
+
+    payload = envelope.get("payload") or {}
+    job_id = str(payload["job_id"])
+    project_dir = Path(str(payload.get("project_dir") or ctx.output_dir))
+    ensure_freezone_dirs(project_dir)
+    _update(ctx, "freezone_video_reference", job_id, 0.1, "分析参考视频链接...")
+    result = await _call_freezone_leaf(
+        envelope,
+        analyze_video_reference,
+        "analyze_video_reference",
+        url=str(payload.get("video_url") or ""),
+        mode=str(payload.get("mode") or "reference"),
+        checklist=payload.get("checklist") or (),
+        extra_notes=str(payload.get("extra_notes") or ""),
+        model=(str(payload.get("model") or "").strip() or None),
+        project_dir=project_dir,
+        job_id=job_id,
+    )
+    _update(ctx, "freezone_video_reference", job_id, 0.9, "保存分析结果...")
+    out_dir = outputs_dir(project_dir, "freezone_video_reference") / job_id
+    out_dir.mkdir(parents=True, exist_ok=True)
+    out_file = out_dir / "analysis.json"
+    out_file.write_text(
+        json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
+    return {
+        "job_id": job_id,
+        "output_url": make_static_url_for_context(
+            ctx,
+            out_file.relative_to(project_dir).as_posix(),
+        ),
+        "analysis": result.get("analysis"),
+        "source": result.get("source"),
+        "model": result.get("model"),
+        "metadata": result.get("metadata") or {},
+        "fallback": result.get("fallback"),
+    }
+
+
+def run_freezone_video_reference(
+    envelope: dict[str, Any], ctx: ProjectContext
+) -> dict[str, Any]:
+    return _run_cancellable(
+        envelope, _run_freezone_video_reference_async(envelope, ctx)
+    )
 
 
 async def _run_freezone_video_erase_async(
@@ -2394,6 +2463,11 @@ register_project_task_runner(
 )
 register_project_task_runner(
     "freezone_video_story", run_freezone_video_story, requires_home_node=False
+)
+register_project_task_runner(
+    "freezone_video_reference",
+    run_freezone_video_reference,
+    requires_home_node=False,
 )
 register_project_task_runner(
     "freezone_video_erase", run_freezone_video_erase, requires_home_node=False
