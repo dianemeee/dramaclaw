@@ -13,7 +13,10 @@ from PIL import Image as PILImage
 
 from novelvideo.brainclaw_contract import BrainClawProfile
 from novelvideo.utils.logging import log_agent_start, log_agent_end
-from novelvideo.utils.source_language import asset_language_instruction
+from novelvideo.utils.source_language import (
+    asset_language_instruction,
+    resolve_asset_language,
+)
 
 # 首尾帧过渡提示词生成器指令（英文版 SuperPower）
 KEYFRAME_PROMPT_BUILDER_INSTRUCTIONS_EN = """# Cinematic Transition Director (SuperPower)
@@ -65,8 +68,14 @@ Output ONLY the transition prompt in the requested language.
 """
 
 
-def create_keyframe_prompt_builder_agent(language: str = "zh") -> Agent:
-    """创建首尾帧过渡提示词生成 Agent。"""
+def create_keyframe_prompt_builder_agent(language: str | None = None) -> Agent:
+    """创建首尾帧过渡提示词生成 Agent。
+
+    ``language`` defaults to the UI language (``DRAMACLAW_UI_LANGUAGE``)
+    instead of the old hardcoded ``"zh"``; callers that pass an explicit
+    language — usually detected from the authored content — are unaffected.
+    """
+    language = resolve_asset_language(language)
     from novelvideo.config import get_newapi_text_pydantic_model
     model = get_newapi_text_pydantic_model(
         "KEYFRAME_PROMPT_MODEL",
@@ -108,8 +117,9 @@ class KeyframePromptBuilder:
         """返回上一次生成提示词时使用的上下文。"""
         return self._last_context
 
-    def _get_agent(self, language: str = "zh") -> Agent:
+    def _get_agent(self, language: str | None = None) -> Agent:
         """获取指定语言的 Agent（懒加载）。"""
+        language = resolve_asset_language(language)
         if language not in self._agents:
             self._agents[language] = create_keyframe_prompt_builder_agent(language)
         return self._agents[language]
@@ -150,7 +160,7 @@ class KeyframePromptBuilder:
         last_frame_path: str,
         narration: str,
         next_narration: str = "",
-        language: str = "zh",
+        language: str | None = None,
         color_map_text: str = "",
         visual_description: str = "",
         next_visual_description: str = "",
@@ -164,10 +174,11 @@ class KeyframePromptBuilder:
             last_frame_path: 下一个 beat 首帧路径
             narration: 当前 beat 解说词
             next_narration: 下一个 beat 解说词（可选，提供更多上下文）
-            language: 输出语言，"en" 英文，"zh" 中文
+            language: 输出语言，"en" 英文，"zh" 中文；None 时跟随 UI 语言
         Returns:
             首尾帧过渡提示词
         """
+        language = resolve_asset_language(language)
         # 验证图片存在
         if not os.path.exists(first_frame_path):
             raise FileNotFoundError(f"First frame not found: {first_frame_path}")
@@ -303,9 +314,10 @@ Output the transition prompt in {output_label} directly."""
 
     def _fallback_build(
         self,
-        language: str = "zh",
+        language: str | None = None,
     ) -> str:
         """回退方案：生成默认过渡提示词。"""
+        language = resolve_asset_language(language)
         if language == "en":
             return (
                 "The character adjusts their posture naturally as the camera "

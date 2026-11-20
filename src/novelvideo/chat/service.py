@@ -171,6 +171,12 @@ from novelvideo.chat.tool_policy import (
 from novelvideo.freezone.studio import openfilm_studio_enabled
 from novelvideo.ports import get_auth_session_port
 from novelvideo.project_context import ProjectContext
+from novelvideo.prompts.lang import (
+    director_language_instruction as _director_language_instruction,
+)
+from novelvideo.prompts.lang import (
+    resolve_director_language as _resolve_director_language,
+)
 from novelvideo.utils.error_redaction import redact_secrets
 
 logger = logging.getLogger("novelvideo.chat.service")
@@ -1883,6 +1889,24 @@ def _codex_protocol_text(tool_mode: str, *, workspace: Path | None = None) -> st
     )
 
 
+def _director_language_from_context(
+    surface_context: dict[str, Any] | None,
+    explicit: str | None = None,
+) -> str:
+    """Resolve Xia Director's working language for this turn.
+
+    Priority: explicit argument > ``ui_language`` in the chat
+    ``surface_context`` (sent by the frontend from the UI language
+    choice) > ``DRAMACLAW_UI_LANGUAGE`` env var > ``zh`` (upstream
+    default). The frontend only sends this inside ``context`` for
+    Freezone scopes today; every other scope relies on the env var.
+    """
+    ui_language = None
+    if isinstance(surface_context, dict):
+        ui_language = surface_context.get("ui_language")
+    return _resolve_director_language(explicit, ui_language)
+
+
 def _user_context_parts(
     username: str,
     project: str,
@@ -1893,6 +1917,7 @@ def _user_context_parts(
     route_prompt: str | None = None,
     turn_id: str | None = None,
     require_generation_parameter_preflight: bool = False,
+    language: str | None = None,
 ) -> _UserContextParts:
     user_message, execution_context = _route_prompt_with_execution_context(
         prompt,
@@ -2009,6 +2034,7 @@ def _user_context_parts(
             f"username: {username}\n"
             f"scope: {scope}\n"
             "Project-scoped facts and learned preferences must stay in the project scope.\n\n"
+            f"{_director_language_instruction(_director_language_from_context(surface_context, language))}\n\n"
         ),
         rendering=rendering_instructions,
         continuation=continuation_instructions,
@@ -2030,6 +2056,7 @@ def _prompt_with_user_context(
     route_prompt: str | None = None,
     turn_id: str | None = None,
     require_generation_parameter_preflight: bool = False,
+    language: str | None = None,
 ) -> str:
     parts = _user_context_parts(
         username,
@@ -2040,6 +2067,7 @@ def _prompt_with_user_context(
         route_prompt=route_prompt,
         turn_id=turn_id,
         require_generation_parameter_preflight=require_generation_parameter_preflight,
+        language=language,
     )
     return (
         parts.header

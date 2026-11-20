@@ -301,8 +301,44 @@ def resolve_freezone_story_script_model(model: str | None) -> dict[str, str]:
     raise ValueError(f"unsupported story script model: {model_text}")
 
 
-def create_freezone_story_script_agent(model: str | None = None) -> Agent:
-    """创建故事脚本生成 Agent。"""
+def freezone_story_script_system_prompt(language: str | None = None) -> str:
+    """Story-script system prompt with the language rule for ``language``.
+
+    The upstream ``FREEZONE_STORY_SCRIPT_SYSTEM_PROMPT`` is kept verbatim
+    as the Chinese default; only its rule 6 (the language rule) is swapped
+    for the matching pack rule from ``novelvideo.prompts.lang``. If the
+    upstream prompt ever changes that sentence, this falls back to
+    appending the pack rule instead of silently keeping Chinese.
+    """
+    from novelvideo.prompts.lang import (
+        resolve_director_language,
+        story_script_language_rule,
+    )
+
+    language = resolve_director_language(language)
+    rule = story_script_language_rule(language)
+    zh_rule = (
+        "Keep all fields in Simplified Chinese except technical tokens "
+        "when naturally needed."
+    )
+    if language == "zh" or zh_rule not in FREEZONE_STORY_SCRIPT_SYSTEM_PROMPT:
+        if language == "zh":
+            return FREEZONE_STORY_SCRIPT_SYSTEM_PROMPT
+        return FREEZONE_STORY_SCRIPT_SYSTEM_PROMPT + f"\n\n## Output Language\n{rule}\n"
+    return FREEZONE_STORY_SCRIPT_SYSTEM_PROMPT.replace(zh_rule, rule, 1)
+
+
+def create_freezone_story_script_agent(
+    model: str | None = None, language: str | None = None
+) -> Agent:
+    """创建故事脚本生成 Agent。
+
+    ``language`` selects the story-script language rule from
+    ``novelvideo.prompts.lang`` (default: the UI language via
+    ``DRAMACLAW_UI_LANGUAGE``, falling back to the original Chinese
+    rule). The upstream prompt text is NOT edited in place — only rule 6
+    is swapped for the pack's rule.
+    """
     from novelvideo.api.schemas import FreezoneStoryScriptGenerateData
     from novelvideo.config import (
         get_newapi_structured_output_model_settings,
@@ -318,7 +354,7 @@ def create_freezone_story_script_agent(model: str | None = None) -> Agent:
     )
     return Agent(
         llm_model,
-        system_prompt=FREEZONE_STORY_SCRIPT_SYSTEM_PROMPT,
+        system_prompt=freezone_story_script_system_prompt(language),
         model_settings=get_newapi_structured_output_model_settings(),
         output_type=FreezoneStoryScriptGenerateData,
         # 结构化脚本表字段多、且 shot_no/duration 是严格 int，模型偶尔会把时长写成
@@ -330,13 +366,28 @@ def create_freezone_story_script_agent(model: str | None = None) -> Agent:
     )
 
 
-def get_freezone_story_script_agent(model: str | None = None) -> Agent:
-    """获取故事脚本生成 Agent 单例。"""
+def get_freezone_story_script_agent(
+    model: str | None = None, language: str | None = None
+) -> Agent:
+    """获取故事脚本生成 Agent 单例。
+
+    The singleton caches the default-language agent only; a non-default
+    language builds a fresh agent (same as the organization-context path
+    already does), so a language switch never serves a stale prompt.
+    """
+    from novelvideo.prompts.lang import resolve_director_language
+
     global _story_script_agent
     resolved = resolve_freezone_story_script_model(model)
+    # resolve_director_language also honours DRAMACLAW_UI_LANGUAGE, so the
+    # story-script agent follows the UI language even when the caller does
+    # not pass one (today no caller does).
+    language = resolve_director_language(language)
     context = current_model_gateway_context()
     if context is not None and context.is_organization:
-        return create_freezone_story_script_agent(resolved["id"])
+        return create_freezone_story_script_agent(resolved["id"], language)
+    if language != "zh":
+        return create_freezone_story_script_agent(resolved["id"], language)
     if _story_script_agent is None:
         _story_script_agent = create_freezone_story_script_agent(resolved["id"])
     return _story_script_agent

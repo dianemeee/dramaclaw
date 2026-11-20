@@ -2837,6 +2837,11 @@ export function useSuperChat({
           ? {
               freezone_canvas_id: normalizedFreezoneCanvasId,
               canvas_command_execution_mode: freezoneCanvasCommandExecutionMode(),
+              // Language pack selection: the backend reads `ui_language`
+              // and loads the matching Xia Director language pack
+              // (novelvideo/prompts/lang). Without this the director
+              // always works in Chinese, whatever the UI language is.
+              ui_language: i18next.resolvedLanguage ?? i18next.language ?? "zh",
               ...(normalizedComposeNodeId
                 ? { freezone_compose_node_id: normalizedComposeNodeId }
                 : {}),

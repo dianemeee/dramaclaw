@@ -20,6 +20,7 @@ from novelvideo.utils.source_language import (
     AssetLanguage,
     asset_language_instruction,
     detect_asset_language,
+    resolve_asset_language,
 )
 
 
@@ -840,10 +841,17 @@ def build_seedance2_prompt_composer_task(
     )
 
 
-def create_seedance2_prompt_composer_agent(language: AssetLanguage = "zh"):
+def create_seedance2_prompt_composer_agent(language: AssetLanguage | None = None):
+    """Create the Seedance 2.0 prompt composer agent.
+
+    ``language`` defaults to the UI language (``DRAMACLAW_UI_LANGUAGE``)
+    instead of the old hardcoded ``"zh"``.
+    """
     from pydantic_ai import Agent
 
     from novelvideo.config import get_newapi_text_pydantic_model
+
+    language = resolve_asset_language(language)
 
     return Agent(
         get_newapi_text_pydantic_model(
@@ -870,8 +878,9 @@ async def compose_seedance2_prompt_with_agent(
     draft_prompt: str,
     request_params: dict[str, Any] | None = None,
     manual_prompt_reference: str = "",
-    language: AssetLanguage = "zh",
+    language: AssetLanguage | None = None,
 ) -> str:
+    language = resolve_asset_language(language)
     agent = create_seedance2_prompt_composer_agent(language)
     result = await agent.run(
         build_seedance2_prompt_composer_task(

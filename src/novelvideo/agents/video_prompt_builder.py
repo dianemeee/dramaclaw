@@ -16,7 +16,10 @@ from novelvideo.utils.debug_context import (
     create_debug_context,
     validate_episode_consistency,
 )
-from novelvideo.utils.source_language import asset_language_instruction
+from novelvideo.utils.source_language import (
+    asset_language_instruction,
+    resolve_asset_language,
+)
 
 
 VIDEO_PROMPT_BUILDER_INSTRUCTIONS_EN = """# I2V Motion Director (SuperPower)
@@ -74,8 +77,14 @@ Output the motion prompt directly. No explanation. No markdown.
 """
 
 
-def create_video_prompt_builder_agent(language: str = "zh") -> Agent:
-    """创建视频提示词生成 Agent。"""
+def create_video_prompt_builder_agent(language: str | None = None) -> Agent:
+    """创建视频提示词生成 Agent。
+
+    ``language`` defaults to the UI language (``DRAMACLAW_UI_LANGUAGE``)
+    instead of the old hardcoded ``"zh"``; callers that pass an explicit
+    language — usually detected from the authored content — are unaffected.
+    """
+    language = resolve_asset_language(language)
     from novelvideo.config import get_superpower_pydantic_model
 
     model = get_superpower_pydantic_model(
@@ -115,8 +124,9 @@ class VideoPromptBuilder:
         """返回上一次生成视频提示词时使用的上下文。"""
         return self._last_context
 
-    def _get_agent(self, language: str = "zh") -> Agent:
+    def _get_agent(self, language: str | None = None) -> Agent:
         """获取指定语言的 Agent（懒加载）。"""
+        language = resolve_asset_language(language)
         if language not in self._agents:
             self._agents[language] = create_video_prompt_builder_agent(language)
         return self._agents[language]
@@ -153,7 +163,7 @@ class VideoPromptBuilder:
         self,
         duration: float = 5.0,
         frame_prompt: str = "",
-        language: str = "zh",
+        language: str | None = None,
         frame_image_path: Optional[str] = None,
         beat_number: int | None = None,
         episode_number: int | None = None,
@@ -177,6 +187,7 @@ class VideoPromptBuilder:
         Returns:
             运动描述提示词
         """
+        language = resolve_asset_language(language)
         # 创建调试上下文
         debug = create_debug_context("video_prompt_builder")
 
@@ -297,9 +308,10 @@ class VideoPromptBuilder:
         narration,
         audio_type,
         dialogue_line,
-        language="zh",
+        language=None,
     ) -> str:
         """构建英文 task 模板 (SuperPower)。"""
+        language = resolve_asset_language(language)
         if language == "en":
             output_label = "English"
             sentence_target = "4-6 sentences"
@@ -398,9 +410,10 @@ Output the motion prompt in {output_label} directly. No explanation.
     def _fallback_build(
         self,
         duration: float,
-        language: str = "zh",
+        language: str | None = None,
     ) -> str:
         """回退方案：根据规则生成默认运动提示词。"""
+        language = resolve_asset_language(language)
         if language == "en":
             return "The character moves naturally as the camera follows the action."
         return "角色自然动作，姿态变化，自然镜头运动"

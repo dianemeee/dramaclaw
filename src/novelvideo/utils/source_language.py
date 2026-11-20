@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import inspect
+import os
 import re
 import unicodedata
 from typing import Literal
@@ -108,6 +109,35 @@ def asset_language_instruction(language: AssetLanguage) -> str:
         "所有面向用户的自由文本字段都使用中文。"
         "人物名和地点名必须按输入原样保留，不得翻译、音译或改写。"
     )
+
+
+def default_asset_language() -> AssetLanguage:
+    """Default asset-prose language for prompt-builder agents.
+
+    Reads ``DRAMACLAW_UI_LANGUAGE`` (the same env var the Xia Director
+    language packs use). ``en`` selects English; ``id`` maps to English
+    for asset prose — image / video prompt fields are prompted in
+    English upstream, and Indonesian asset prose would degrade
+    generation. Anything else keeps the historical Chinese default.
+    Callers that pass an explicit language (usually detected from the
+    authored content) are unaffected; this only changes the no-argument
+    default, which used to be hardcoded ``"zh"``.
+    """
+    tag = os.environ.get("DRAMACLAW_UI_LANGUAGE", "").strip().lower()
+    if tag.startswith("en") or tag.startswith("id"):
+        return "en"
+    return "zh"
+
+
+def resolve_asset_language(language: str | None) -> AssetLanguage:
+    """Resolve an explicit asset language, falling back to the default."""
+    if language:
+        tag = language.strip().lower()
+        if tag.startswith("en") or tag.startswith("id"):
+            return "en"
+        if tag.startswith("zh"):
+            return "zh"
+    return default_asset_language()
 
 
 async def detect_episode_asset_language(

@@ -1,0 +1,74 @@
+# Sync upstream dramaclaw/dramaclaw into this fork, weekly + on demand.
+#
+# How it stays small (the point of the language-pack design): upstream
+# changes merge at file/line level. The recode lives in new files
+# (`src/novelvideo/prompts/lang/*`, these workflows, docs) plus small
+# wiring in a handful of files, so most upstream merges apply cleanly.
+# Only a merge that touches the *same lines* as the recode conflicts —
+# and then this workflow stops, opens an issue listing the conflicted
+# files, and pushes nothing, so the fork is never left half-merged.
+#
+# Flow: fetch upstream -> create branch sync/upstream-<date> -> merge
+# upstream/main -> if clean, push the branch and open a PR against
+# main; merging the PR triggers build-images.yml, which publishes the
+# new :latest-id images. If the merge conflicts, open an issue instead
+# and push nothing.
+
+name: sync-upstream
+
+on:
+  schedule:
+    - cron: "0 3 * * 1" # Mondays 03:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git remote add upstream https://github.com/dramaclaw/dramaclaw.git
+          git fetch upstream main
+      - name: Merge upstream into a sync branch
+        id: merge
+        run: |
+          BRANCH="sync/upstream-$(date +%Y%m%d)"
+          echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
+          git checkout -b "$BRANCH"
+          if git merge --no-edit upstream/main; then
+            echo "conflicted=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "conflicted=true" >> "$GITHUB_OUTPUT"
+            git diff --name-only --diff-filter=U > conflicted-files.txt || true
+            cat conflicted-files.txt
+          fi
+      - name: Open PR (clean merge)
+        if: steps.merge.outputs.conflicted == 'false'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          BRANCH="${{ steps.merge.outputs.branch }}"
+          git push origin "$BRANCH"
+          gh pr create --base main --head "$BRANCH" \
+            --title "Sync upstream dramaclaw/dramaclaw (weekly)" \
+            --body "Automated upstream merge. Review the diff, merge it, and build-images.yml will publish new :latest-id images. Language-pack files live in src/novelvideo/prompts/lang/ — check they still apply cleanly."
+      - name: Open issue (conflicted merge)
+        if: steps.merge.outputs.conflicted == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          FILES=$(paste -sd ', ' conflicted-files.txt)
+          gh issue create \
+            --title "Upstream sync conflicted — manual merge needed" \
+            --body "The weekly upstream sync hit merge conflicts and pushed nothing. Conflicted files: $FILES. Resolve them on branch ${{ steps.merge.outputs.branch }} (local checkout), then push the branch and open a PR manually."
