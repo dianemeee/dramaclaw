@@ -12,6 +12,8 @@ export type ClientFrame =
       context?: {
         freezone_canvas_id?: string | null;
         canvas_command_execution_mode?: "manual_confirm" | "auto_execute";
+        /** UI language (en/id/...) sent so the backend loads the matching Xia Director language pack. */
+        ui_language?: string;
         /** 视频合成与剪辑工作区打开时，正在剪的 videoComposeNode id。 */
         freezone_compose_node_id?: string | null;
       };
