@@ -2025,6 +2025,7 @@ export async function fetchFreezoneJobResult(
     | "freezone_text_translate"
     | "freezone_story_script"
     | "freezone_analyze_video_story"
+    | "freezone_video_reference"
     | "stage_asset",
   jobId: string,
 ): Promise<FreezoneJobResult> {
