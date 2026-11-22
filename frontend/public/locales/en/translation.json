@@ -3452,7 +3452,32 @@
         "perEpisode": "Props are generated per episode"
       },
       "started": "Task started",
-      "cancelled": "Task cancelled"
+      "cancelled": "Task cancelled",
+      "freezone": {
+        "imageGenerate": "Calling image generator...",
+        "imageEdit": "Calling image editor...",
+        "maskEdit": "Calling {{provider}} image erase...",
+        "extractFrames": "Extracting frames with ffmpeg...",
+        "extractKeyframes": "Extracting keyframes with ffmpeg...",
+        "videoBreakdownComplete": "Frame-by-frame breakdown complete",
+        "directorSketchReady": "Director composite sketch candidates generated",
+        "videoReferenceAnalysing": "Analysing reference video link...",
+        "analysisSaving": "Saving analysis result...",
+        "articleReferenceAnalysing": "Analysing reference article...",
+        "videoEraseStart": "Starting video erase...",
+        "videoUpscaleStart": "Starting video upscaling...",
+        "audioSeparateStart": "Starting audio/video separation...",
+        "videoComposeExportStart": "Starting final cut export...",
+        "videoComposeTimelineStart": "Composing video timeline...",
+        "textTranslateStart": "Starting text translation...",
+        "textGenerateStart": "Starting text generation...",
+        "storyScriptStart": "Starting story script generation...",
+        "imageReversePromptStart": "Starting reverse image prompt...",
+        "blockoutBuilding": "Building blockout from reference image...",
+        "blockoutSaving": "Saving blockout...",
+        "audioSpeechStart": "Starting text-to-speech...",
+        "musicStart": "Starting text-to-music..."
+      }
     },
     "log": {
       "ingest": {

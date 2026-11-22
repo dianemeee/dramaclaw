@@ -3452,7 +3452,32 @@
         "perEpisode": "道具按分集生成"
       },
       "started": "任务已开始",
-      "cancelled": "任务已取消"
+      "cancelled": "任务已取消",
+      "freezone": {
+        "imageGenerate": "调用图像生成器...",
+        "imageEdit": "调用图像编辑器...",
+        "maskEdit": "调用 {{provider}} 图片擦除...",
+        "extractFrames": "ffmpeg 抽帧中...",
+        "extractKeyframes": "ffmpeg 抽取关键帧...",
+        "videoBreakdownComplete": "逐帧拉片完成",
+        "directorSketchReady": "导演合成图草图候选已生成",
+        "videoReferenceAnalysing": "分析参考视频链接...",
+        "analysisSaving": "保存分析结果...",
+        "articleReferenceAnalysing": "分析参考文章...",
+        "videoEraseStart": "开始视频擦除处理...",
+        "videoUpscaleStart": "开始视频高清处理...",
+        "audioSeparateStart": "开始音视频分离...",
+        "videoComposeExportStart": "开始导出剪辑成片...",
+        "videoComposeTimelineStart": "开始合成视频时间线...",
+        "textTranslateStart": "开始翻译文本...",
+        "textGenerateStart": "开始生成文本...",
+        "storyScriptStart": "开始生成故事脚本...",
+        "imageReversePromptStart": "开始反推图片提示词...",
+        "blockoutBuilding": "正在根据参考图搭建白模...",
+        "blockoutSaving": "正在保存白模...",
+        "audioSpeechStart": "开始文本生成语音...",
+        "musicStart": "开始文本生成音乐..."
+      }
     },
     "log": {
       "ingest": {

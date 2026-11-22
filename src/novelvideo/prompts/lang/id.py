@@ -51,3 +51,38 @@ STORY_SCRIPT_LANGUAGE_RULE = (
     "visual_description / shot prompt fields in English, except technical "
     "tokens when naturally needed."
 )
+
+# Indonesian display titles of the deterministic standard-planner workflow
+# items (see ``lang/zh.py`` for the layout contract). Visual terms such as
+# Frame / Video stay in English, matching the id pack's rule that visual
+# generation prompt fields stay English.
+WORKFLOW_ITEM_TITLES = {
+    "outline": "Perencanaan Konten",
+    "ad_outline": "Garis Besar Kreatif Iklan",
+    "product_anchor": "Anchor Visual Produk",
+    "character_setup": "Pengaturan Karakter",
+    "scene_setup": "Pengaturan Adegan",
+    "prop_setup": "Pengaturan Properti",
+    "character_image": "Gambar Identitas Karakter",
+    "scene_image": "Gambar Referensi Adegan",
+    "prop_image": "Gambar Referensi Properti",
+    "shot_design_suffix": " Desain Shot",
+    "first_frame_suffix": " Frame Pertama",
+    "frame_suffix": " Frame",
+    "video_suffix": " Video",
+    "narration_suffix": " Narasi",
+    "background_music": "Musik Latar",
+    "outline_part": "Bagian {index}",
+    "outline_narration_label": "Narasi: ",
+    "outline_facts_header": "Fakta dan narasi tiap bagian (harus dipertahankan selengkapnya):",
+    "deferred_narration_prompt": (
+        "Hanya bacakan narasi, voiceover, dialog, atau speech_text dari "
+        "output desain shot di atas. Jangan bacakan catatan produksi."
+    ),
+    "final_compose": "Komposisi Akhir",
+    "final_compose_description": (
+        "Gabungkan klip video, musik, dan narasi ke timeline "
+        "untuk hasil akhir."
+    ),
+    "workflow_input": "Permintaan Pengguna / Materi Input",
+}

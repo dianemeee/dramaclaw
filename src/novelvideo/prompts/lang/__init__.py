@@ -45,6 +45,7 @@ __all__ = [
     "normalize_ui_language",
     "director_language_instruction",
     "story_script_language_rule",
+    "workflow_item_titles",
 ]
 
 #: Director languages with a pack in this package.
@@ -102,3 +103,17 @@ def story_script_language_rule(language: object | None = None) -> str:
     """Return the story-script language rule for ``language``."""
     pack = _PACKS[normalize_ui_language(language)]
     return pack.STORY_SCRIPT_LANGUAGE_RULE
+
+
+def workflow_item_titles(language: object | None = None) -> dict[str, str]:
+    """Return the standard-planner workflow item titles for ``language``.
+
+    The deterministic planner in ``freezone/agent_workflows/catalog.py``
+    shows these titles verbatim in the Workflow progress card, so they
+    must follow the UI language. Unknown keys fall back to the ``zh``
+    pack; unknown languages fall back to ``zh`` entirely.
+    """
+    pack = _PACKS[normalize_ui_language(language)]
+    titles = dict(_zh.WORKFLOW_ITEM_TITLES)
+    titles.update(getattr(pack, "WORKFLOW_ITEM_TITLES", {}) or {})
+    return titles

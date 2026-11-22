@@ -1,3 +1,5 @@
+import i18next from "i18next";
+
 import { isTerminal } from "@/task-center/derivations";
 import type { TaskState } from "@/task-center/types";
 
@@ -56,23 +58,33 @@ export function resolveChatTaskBatchSummary(
 }
 
 export function buildChatTaskBatchNotification(summary: ChatTaskBatchSummary): string {
-  const episodeLabel = summary.episode > 0 ? `第 ${summary.episode} 集` : "";
+  const en = (i18next.resolvedLanguage ?? i18next.language ?? "zh")
+    .toLowerCase()
+    .startsWith("en");
+  const episodeLabel = summary.episode > 0
+    ? (en ? `Episode ${summary.episode}` : `第 ${summary.episode} 集`)
+    : "";
   const taskLabel = summary.taskType === "single_video"
-    ? "视频"
+    ? (en ? "video" : "视频")
     : summary.taskType === "selected_regen"
-      ? "首帧"
+      ? (en ? "first frame" : "首帧")
       : summary.taskType === "sketch_grid_generation"
-        ? "草图网格"
-      : "任务";
+        ? (en ? "sketch grid" : "草图网格")
+      : (en ? "task" : "任务");
   if (summary.completed === summary.total) {
     const prefix = episodeLabel ? `${episodeLabel} ` : "";
-    return `✅ ${prefix}${summary.total} 个${taskLabel}已全部生成完成。你可以让我查看结果，或继续下一步。`;
+    return en
+      ? `✅ ${prefix}${summary.total} ${taskLabel}${summary.total > 1 ? "s" : ""} fully generated. You can ask me to show the results, or continue to the next step.`
+      : `✅ ${prefix}${summary.total} 个${taskLabel}已全部生成完成。你可以让我查看结果，或继续下一步。`;
   }
 
   const details = [
-    `完成 ${summary.completed}/${summary.total}`,
-    summary.failed > 0 ? `失败 ${summary.failed}` : "",
-    summary.cancelled > 0 ? `取消 ${summary.cancelled}` : "",
-  ].filter(Boolean).join("，");
-  return `${episodeLabel}${taskLabel}批次已结束：${details}。请在任务中心查看详情后再继续。`;
+    en ? `Completed ${summary.completed}/${summary.total}` : `完成 ${summary.completed}/${summary.total}`,
+    summary.failed > 0 ? (en ? `Failed ${summary.failed}` : `失败 ${summary.failed}`) : "",
+    summary.cancelled > 0 ? (en ? `Cancelled ${summary.cancelled}` : `取消 ${summary.cancelled}`) : "",
+  ].filter(Boolean).join(en ? ", " : "，");
+  const episodePrefix = episodeLabel ? `${episodeLabel} ` : "";
+  return en
+    ? `${episodePrefix}${taskLabel} batch finished: ${details}. Please check the details in Task Center before continuing.`
+    : `${episodeLabel}${taskLabel}批次已结束：${details}。请在任务中心查看详情后再继续。`;
 }

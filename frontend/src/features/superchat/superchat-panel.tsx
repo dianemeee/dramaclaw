@@ -64,6 +64,7 @@ import { createPortal } from "react-dom";
 import ReactMarkdown, { type Components as MarkdownComponents } from "react-markdown";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
+import i18next from "i18next";
 import { useParams } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { attachBorderBeam, type BorderBeamController } from "border-beam-vanilla";
@@ -247,7 +248,7 @@ import { looksLikeCanvasExecutionNarration } from "@/features/superchat/canvas-e
 import {
   filterFreezoneSkillSuggestions,
   findFreezoneSkillMention,
-  FREEZONE_SKILL_EMPTY_ACTIONS,
+  getFreezoneSkillEmptyActions,
   type FreezoneSkillSuggestion,
   getFreezoneSkillSlashQuery,
   insertFreezoneSkillEmptyActionPrompt,
@@ -496,6 +497,129 @@ const FREEZONE_TOOL_DISPLAY: Record<string, { title: string; description: string
   },
 };
 
+// English counterpart of FREEZONE_TOOL_DISPLAY: the tool cards in the
+// Xia Director chat show these when the UI language is en. Keys must
+// stay in sync with the Chinese map above.
+const FREEZONE_TOOL_DISPLAY_EN: Record<string, { title: string; description: string }> = {
+  freezone_emit_canvas_command: {
+    title: "Prepare canvas operation",
+    description: "Generate executable canvas edit commands",
+  },
+  freezone_create_node: {
+    title: "Create node",
+    description: "Prepare to create a canvas node",
+  },
+  freezone_add_next_node: {
+    title: "Add node",
+    description: "Prepare to create a downstream node after a node",
+  },
+  freezone_update_node_data: {
+    title: "Update node",
+    description: "Prepare to edit node data",
+  },
+  freezone_create_edge: {
+    title: "Create link",
+    description: "Prepare to link two canvas nodes",
+  },
+  freezone_delete_nodes: {
+    title: "Delete nodes",
+    description: "Prepare to delete canvas nodes",
+  },
+  freezone_delete_edges: {
+    title: "Remove links",
+    description: "Prepare to remove canvas links",
+  },
+  freezone_move_nodes: {
+    title: "Move nodes",
+    description: "Prepare to move canvas nodes",
+  },
+  freezone_layout_nodes: {
+    title: "Arrange layout",
+    description: "Prepare to arrange canvas node layout",
+  },
+  freezone_group_nodes: {
+    title: "Create group",
+    description: "Prepare to put nodes into a visual group",
+  },
+  freezone_select_nodes: {
+    title: "Select nodes",
+    description: "Prepare to select or focus canvas nodes",
+  },
+  freezone_run_node_action: {
+    title: "Run node action",
+    description: "Prepare to run a node frontend action",
+  },
+  freezone_get_canvas_ontology: {
+    title: "Read canvas ontology",
+    description: "Fetch the current canvas ontology in detail",
+  },
+  freezone_get_canvas_snapshot: {
+    title: "Read canvas",
+    description: "Fetch current canvas nodes and links",
+  },
+  freezone_get_selection: {
+    title: "Read selection",
+    description: "Fetch the currently selected canvas nodes",
+  },
+  freezone_get_node_detail: {
+    title: "Read node",
+    description: "Fetch a single node's details",
+  },
+  freezone_get_neighbor_graph: {
+    title: "Read neighbours",
+    description: "Fetch a node's neighbouring relations",
+  },
+  freezone_get_node_action_catalog: {
+    title: "Read node capabilities",
+    description: "Fetch the actions available on a single node",
+  },
+  freezone_get_node_create_schema: {
+    title: "Read creation params",
+    description: "Fetch node creation parameters",
+  },
+  freezone_get_audio_voice_options: {
+    title: "Read voices",
+    description: "Fetch audio node voice options",
+  },
+  freezone_get_slot_candidates: {
+    title: "Read slots",
+    description: "Fetch the slots that can be submitted now",
+  },
+  freezone_get_mainline_projection_assets: {
+    title: "Read mainline assets",
+    description: "Fetch assets that can be mapped to the canvas",
+  },
+  freezone_get_canvas_action_catalog: {
+    title: "Query canvas capabilities",
+    description: "Fetch the canvas-level action catalog",
+  },
+  freezone_get_canvas_command_catalog: {
+    title: "Read command rules",
+    description: "Fetch batch canvas command field rules",
+  },
+  freezone_get_link_type_catalog: {
+    title: "Read link types",
+    description: "Fetch regular node link types",
+  },
+  freezone_validate_canvas_commands: {
+    title: "Validate canvas commands",
+    description: "Pre-validate canvas_chat_commands",
+  },
+  freezone_summarize_canvas: {
+    title: "Summarise canvas",
+    description: "Summarise the current canvas structure",
+  },
+};
+
+// Module-level display strings follow the resolved UI language at render
+// time (same pattern as referenceSend.ts: read the i18next default
+// instance, do not import the @/i18n module here).
+function isEnglishUi(): boolean {
+  return (i18next.resolvedLanguage ?? i18next.language ?? "zh")
+    .toLowerCase()
+    .startsWith("en");
+}
+
 const AGENT_TOOL_TITLE_OVERRIDES: Record<string, string> = {
   skill: "加载 Skill",
   list_workflows: "读取可用工作流",
@@ -516,6 +640,29 @@ const AGENT_TOOL_TITLE_OVERRIDES: Record<string, string> = {
   freezone_put_agent_catalog_recipe: "生成 Recipe 配置",
   freezone_patch_agent_catalog_draft: "调整 Skill 草稿",
   freezone_finish_agent_catalog_draft: "展示 Skill 草稿",
+};
+
+// English counterpart of AGENT_TOOL_TITLE_OVERRIDES (same keys).
+const AGENT_TOOL_TITLE_OVERRIDES_EN: Record<string, string> = {
+  skill: "Load Skill",
+  list_workflows: "Read available workflows",
+  "list workflows": "Read available workflows",
+  freezone_get_workflow_skill: "Load Workflow Skill",
+  get_workflow_skill: "Load Workflow Skill",
+  "get workflow skill": "Load Workflow Skill",
+  freezone_prepare_workflow_draft: "Generate workflow draft",
+  freezone_prepare_workflow_plan_draft: "Generate workflow draft",
+  freezone_confirm_workflow_draft: "Submit to canvas",
+  freezone_request_user_clarification: "Confirm generation parameters",
+  freezone_list_agent_catalog: "Read Skill / Recipe list",
+  freezone_get_saved_skill: "Read saved Skill",
+  freezone_get_saved_recipe: "Read saved Recipe",
+  freezone_put_agent_catalog_draft_outline: "Organise Skill plan",
+  freezone_begin_agent_catalog_draft: "Create Skill draft",
+  freezone_put_agent_catalog_skill: "Generate Skill config",
+  freezone_put_agent_catalog_recipe: "Generate Recipe config",
+  freezone_patch_agent_catalog_draft: "Adjust Skill draft",
+  freezone_finish_agent_catalog_draft: "Show Skill draft",
 };
 
 function toolRawRecord(message: ChatMessage): Record<string, unknown> | null {
@@ -600,7 +747,8 @@ function freezoneToolName(message: ChatMessage): string {
 
 function freezoneToolDisplay(message: ChatMessage): { title: string; description: string } | null {
   const name = freezoneToolName(message);
-  return FREEZONE_TOOL_DISPLAY[name] ?? null;
+  const display = isEnglishUi() ? FREEZONE_TOOL_DISPLAY_EN : FREEZONE_TOOL_DISPLAY;
+  return display[name] ?? null;
 }
 
 function freezoneToolStatus(message: ChatMessage): "running" | "done" | "failed" {
@@ -634,24 +782,24 @@ function freezoneToolMeta(message: ChatMessage): string[] {
   const data = result?.data && typeof result.data === "object" ? result.data as Record<string, unknown> : null;
   const project = input?.project_id ?? input?.project ?? rawInput?.project_id ?? rawInput?.project ?? data?.project;
   const canvas = input?.canvas_id ?? input?.canvasId ?? rawInput?.canvas_id ?? rawInput?.canvasId ?? data?.canvas_id;
-  if (typeof project === "string" && project.trim()) values.push(`项目：${project}`);
-  if (typeof canvas === "string" && canvas.trim()) values.push(`画布：${canvas}`);
-  if (Array.isArray(data?.objects)) values.push(`节点：${data.objects.length}`);
-  if (Array.isArray(data?.links)) values.push(`连线：${data.links.length}`);
-  if (toolName === "freezone_get_canvas_ontology") values.push(`读取：${CANVAS_CONTEXT_REQUEST_LABELS.canvas_ontology}`);
-  if (toolName === "freezone_summarize_canvas") values.push(`读取：${CANVAS_CONTEXT_REQUEST_LABELS.canvas_summary}`);
-  if (toolName === "freezone_get_canvas_action_catalog") values.push(`读取：${CANVAS_CONTEXT_REQUEST_LABELS.canvas_action_catalog}`);
-  if (toolName === "freezone_get_canvas_command_catalog") values.push(`读取：${CANVAS_CONTEXT_REQUEST_LABELS.canvas_command_catalog}`);
-  if (toolName === "freezone_get_link_type_catalog") values.push(`读取：${CANVAS_CONTEXT_REQUEST_LABELS.link_type_catalog}`);
-  if (toolName === "freezone_get_selection") values.push(`读取：${CANVAS_CONTEXT_REQUEST_LABELS.selection_detail}`);
-  if (toolName === "freezone_get_node_detail") values.push(`读取：${CANVAS_CONTEXT_REQUEST_LABELS.node_detail}`);
-  if (toolName === "freezone_get_neighbor_graph") values.push(`读取：${CANVAS_CONTEXT_REQUEST_LABELS.neighbor_graph}`);
-  if (toolName === "freezone_get_node_action_catalog") values.push(`读取：${CANVAS_CONTEXT_REQUEST_LABELS.node_action_catalog}`);
-  if (toolName === "freezone_get_node_create_schema") values.push(`读取：${CANVAS_CONTEXT_REQUEST_LABELS.node_create_schema}`);
-  if (toolName === "freezone_get_audio_voice_options") values.push(`读取：${CANVAS_CONTEXT_REQUEST_LABELS.audio_voice_options}`);
-  if (toolName === "freezone_get_slot_candidates") values.push(`读取：${CANVAS_CONTEXT_REQUEST_LABELS.slot_candidates}`);
-  if (toolName === "freezone_get_mainline_projection_assets") values.push(`读取：${CANVAS_CONTEXT_REQUEST_LABELS.mainline_projection_assets}`);
-  if (toolName === "freezone_validate_canvas_commands") values.push(`校验：${CANVAS_CONTEXT_REQUEST_LABELS.validate_canvas_commands}`);
+  if (typeof project === "string" && project.trim()) values.push(isEnglishUi() ? `Project: ${project}` : `项目：${project}`);
+  if (typeof canvas === "string" && canvas.trim()) values.push(isEnglishUi() ? `Canvas: ${canvas}` : `画布：${canvas}`);
+  if (Array.isArray(data?.objects)) values.push(isEnglishUi() ? `Nodes: ${data.objects.length}` : `节点：${data.objects.length}`);
+  if (Array.isArray(data?.links)) values.push(isEnglishUi() ? `Links: ${data.links.length}` : `连线：${data.links.length}`);
+  if (toolName === "freezone_get_canvas_ontology") values.push(isEnglishUi() ? `Read: ${canvasContextRequestLabel("canvas_ontology")}` : `读取：${CANVAS_CONTEXT_REQUEST_LABELS.canvas_ontology}`);
+  if (toolName === "freezone_summarize_canvas") values.push(isEnglishUi() ? `Read: ${canvasContextRequestLabel("canvas_summary")}` : `读取：${CANVAS_CONTEXT_REQUEST_LABELS.canvas_summary}`);
+  if (toolName === "freezone_get_canvas_action_catalog") values.push(isEnglishUi() ? `Read: ${canvasContextRequestLabel("canvas_action_catalog")}` : `读取：${CANVAS_CONTEXT_REQUEST_LABELS.canvas_action_catalog}`);
+  if (toolName === "freezone_get_canvas_command_catalog") values.push(isEnglishUi() ? `Read: ${canvasContextRequestLabel("canvas_command_catalog")}` : `读取：${CANVAS_CONTEXT_REQUEST_LABELS.canvas_command_catalog}`);
+  if (toolName === "freezone_get_link_type_catalog") values.push(isEnglishUi() ? `Read: ${canvasContextRequestLabel("link_type_catalog")}` : `读取：${CANVAS_CONTEXT_REQUEST_LABELS.link_type_catalog}`);
+  if (toolName === "freezone_get_selection") values.push(isEnglishUi() ? `Read: ${canvasContextRequestLabel("selection_detail")}` : `读取：${CANVAS_CONTEXT_REQUEST_LABELS.selection_detail}`);
+  if (toolName === "freezone_get_node_detail") values.push(isEnglishUi() ? `Read: ${canvasContextRequestLabel("node_detail")}` : `读取：${CANVAS_CONTEXT_REQUEST_LABELS.node_detail}`);
+  if (toolName === "freezone_get_neighbor_graph") values.push(isEnglishUi() ? `Read: ${canvasContextRequestLabel("neighbor_graph")}` : `读取：${CANVAS_CONTEXT_REQUEST_LABELS.neighbor_graph}`);
+  if (toolName === "freezone_get_node_action_catalog") values.push(isEnglishUi() ? `Read: ${canvasContextRequestLabel("node_action_catalog")}` : `读取：${CANVAS_CONTEXT_REQUEST_LABELS.node_action_catalog}`);
+  if (toolName === "freezone_get_node_create_schema") values.push(isEnglishUi() ? `Read: ${canvasContextRequestLabel("node_create_schema")}` : `读取：${CANVAS_CONTEXT_REQUEST_LABELS.node_create_schema}`);
+  if (toolName === "freezone_get_audio_voice_options") values.push(isEnglishUi() ? `Read: ${canvasContextRequestLabel("audio_voice_options")}` : `读取：${CANVAS_CONTEXT_REQUEST_LABELS.audio_voice_options}`);
+  if (toolName === "freezone_get_slot_candidates") values.push(isEnglishUi() ? `Read: ${canvasContextRequestLabel("slot_candidates")}` : `读取：${CANVAS_CONTEXT_REQUEST_LABELS.slot_candidates}`);
+  if (toolName === "freezone_get_mainline_projection_assets") values.push(isEnglishUi() ? `Read: ${canvasContextRequestLabel("mainline_projection_assets")}` : `读取：${CANVAS_CONTEXT_REQUEST_LABELS.mainline_projection_assets}`);
+  if (toolName === "freezone_validate_canvas_commands") values.push(isEnglishUi() ? `Validate: ${canvasContextRequestLabel("validate_canvas_commands")}` : `校验：${CANVAS_CONTEXT_REQUEST_LABELS.validate_canvas_commands}`);
   return values.slice(0, 4);
 }
 
@@ -1535,8 +1683,8 @@ function StructuredRenderer({
                 size="icon-xs"
                 onClick={() => {
                   void writeClipboardText(JSON.stringify(block.value, null, 2)).then((ok) => {
-                    if (ok) toast.success("已复制");
-                    else toast.error("复制失败");
+                    if (ok) toast.success(isEnglishUi() ? "Copied" : "已复制");
+                    else toast.error(isEnglishUi() ? "Copy failed" : "复制失败");
                   });
                 }}
                 aria-label="Copy JSON"
@@ -1706,23 +1854,25 @@ function CanvasContextActivityCard({ activity }: { activity: CanvasContextActivi
   const failed = activity.status === "failed";
   const running = activity.status === "running";
   const visualTone = canvasContextActivityVisualTone(activity);
-  const label = activity.labels.length > 0 ? activity.labels.join("、") : "画布上下文";
+  const label = activity.labels.length > 0
+    ? activity.labels.map(canvasContextDisplayLabel).join(isEnglishUi() ? ", " : "、")
+    : (isEnglishUi() ? "Canvas context" : "画布上下文");
   const isThinking = activity.labels.includes(CANVAS_CONTEXT_THINKING_LABEL);
   const isValidation = canvasContextActivityIsValidation(activity);
   const hasErrors = activity.errors.length > 0;
   const statusText = isThinking
-    ? CANVAS_CONTEXT_THINKING_LABEL
+    ? (isEnglishUi() ? "Thinking..." : CANVAS_CONTEXT_THINKING_LABEL)
     : isValidation
       ? running
-        ? "正在校验画布命令"
+        ? (isEnglishUi() ? "Validating canvas commands" : "正在校验画布命令")
         : failed
-          ? "画布命令校验失败"
-          : "已校验画布命令"
+          ? (isEnglishUi() ? "Canvas command validation failed" : "画布命令校验失败")
+          : (isEnglishUi() ? "Canvas commands validated" : "已校验画布命令")
       : running
-        ? `正在读取${label}`
+        ? (isEnglishUi() ? `Reading ${label}` : `正在读取${label}`)
         : failed
-          ? `读取${label}失败`
-          : `已读取${label}`;
+          ? (isEnglishUi() ? `Failed to read ${label}` : `读取${label}失败`)
+          : (isEnglishUi() ? `Read ${label}` : `已读取${label}`);
   const repeatText = activity.repeatCount && activity.repeatCount > 1 ? ` × ${activity.repeatCount}` : "";
   return (
     <div className={cn("mt-2 w-fit max-w-full rounded-md px-0 py-1 text-xs", visualTone === "warning" ? "text-amber-300/90" : "text-muted-foreground")}>
@@ -1770,7 +1920,7 @@ function FreezoneToolActivityCard({ message }: { message: ChatMessage }) {
         )}
         <span className="font-medium">{display.title}</span>
         <span className="text-xs text-muted-foreground">
-          {status === "running" ? "进行中" : status === "failed" ? "失败" : "完成"}
+          {status === "running" ? (isEnglishUi() ? "Running" : "进行中") : status === "failed" ? (isEnglishUi() ? "Failed" : "失败") : (isEnglishUi() ? "Done" : "完成")}
         </span>
       </div>
       <div className="mt-1 text-xs leading-5 text-muted-foreground">
@@ -1790,9 +1940,10 @@ function FreezoneToolActivityCard({ message }: { message: ChatMessage }) {
 function genericToolTitle(message: ChatMessage): string {
   const raw = toolRawRecord(message);
   const name = typeof raw?.name === "string" ? bareToolName(raw.name.trim()) : "";
-  const override = AGENT_TOOL_TITLE_OVERRIDES[name.toLowerCase()];
+  const overrides = isEnglishUi() ? AGENT_TOOL_TITLE_OVERRIDES_EN : AGENT_TOOL_TITLE_OVERRIDES;
+  const override = overrides[name.toLowerCase()];
   if (override) return override;
-  if (!name) return "执行工具";
+  if (!name) return isEnglishUi() ? "Run tool" : "执行工具";
   return name
     .replace(/^freezone_/u, "")
     .replace(/[_-]+/gu, " ")
@@ -1849,7 +2000,7 @@ function AgentToolActivityCard({ message }: { message: ChatMessage }) {
         )}
         <span className="font-medium">{genericToolTitle(message)}</span>
         <span className="text-xs text-muted-foreground">
-          {status === "running" ? "进行中" : status === "failed" ? "失败" : "完成"}
+          {status === "running" ? (isEnglishUi() ? "Running" : "进行中") : status === "failed" ? (isEnglishUi() ? "Failed" : "失败") : (isEnglishUi() ? "Done" : "完成")}
         </span>
       </div>
       {detail && <div className="mt-1 text-xs leading-5 text-muted-foreground">{detail}</div>}
@@ -1921,9 +2072,9 @@ function agentUsageSummaryFromMessage(message: ChatMessage): AgentUsageSummary |
     .map(([key, value]) => [key, String(value)] as [string, string]);
   if (entries.length === 0) return null;
 
-  const label = "上下文用量";
+  const label = isEnglishUi() ? "Context usage" : "上下文用量";
   const titleLines = [
-    "上下文用量",
+    label,
     ...entries.map(([key, value]) => `${key}: ${value}`),
   ];
 
@@ -2121,14 +2272,14 @@ function toolStatusRuntimeText(params: {
   const toolNames = [raw?.name, raw?.tool_name, raw?.toolName].flatMap((candidate) =>
     typeof candidate === "string" ? [bareToolName(candidate)] : []);
   if (status === "failed" && toolNames.includes("freezone_put_agent_catalog_draft_outline")) {
-    return "待重新整理 Skill 方案";
+    return isEnglishUi() ? "Skill plan needs reorganising" : "待重新整理 Skill 方案";
   }
   if (status === "failed" && toolNames.includes("freezone_prepare_workflow_draft")) {
-    return "待重新生成工作流草稿";
+    return isEnglishUi() ? "Workflow draft needs regenerating" : "待重新生成工作流草稿";
   }
-  if (status === "running") return `正在${title}`;
-  if (status === "failed") return `${title}失败`;
-  return `已${title}`;
+  if (status === "running") return isEnglishUi() ? `Running ${title}` : `正在${title}`;
+  if (status === "failed") return isEnglishUi() ? `${title} failed` : `${title}失败`;
+  return isEnglishUi() ? `${title} done` : `已${title}`;
 }
 
 export const toolStatusRuntimeTextForTest = toolStatusRuntimeText;
@@ -2180,7 +2331,7 @@ function agentThoughtRuntimePresentation(
   const running = event.status === "running";
   const active = options.streaming && running;
   return {
-    label: active ? "思考中" : "思考过程",
+    label: active ? (isEnglishUi() ? "Thinking..." : "思考中") : (isEnglishUi() ? "Thought process" : "思考过程"),
     initiallyExpanded: active,
     running,
   };
@@ -2356,14 +2507,14 @@ function AgentRuntimeTimeline({
             <details key={part.id} className="group py-0.5">
               <summary className="flex min-h-5 cursor-pointer list-none items-center gap-2 text-left [&::-webkit-details-marker]:hidden">
                 <ListTree className="size-3.5 shrink-0 text-primary" />
-                <span className="min-w-0 flex-1 truncate font-medium text-foreground/90">执行计划</span>
+                <span className="min-w-0 flex-1 truncate font-medium text-foreground/90">{isEnglishUi() ? "Execution plan" : "执行计划"}</span>
                 <span className="shrink-0 text-[11px] text-muted-foreground/80">{completed}/{entries.length}</span>
                 <ChevronRight className="size-3 shrink-0 transition-transform group-open:rotate-90" />
               </summary>
               <div className="mt-1 space-y-1 border-l border-white/10 pl-4 ml-1.5">
                 {entries.map((entry, index) => {
                   const status = typeof entry.status === "string" ? entry.status : "pending";
-                  const content = typeof entry.content === "string" ? entry.content : `步骤 ${index + 1}`;
+                  const content = typeof entry.content === "string" ? entry.content : (isEnglishUi() ? `Step ${index + 1}` : `步骤 ${index + 1}`);
                   return (
                     <div key={`${index}-${content}`} className="flex items-start gap-2 leading-5">
                       {status === "completed" ? (
@@ -2399,7 +2550,9 @@ function agentActivityLabelFromMessage(message: ChatMessage | undefined): string
       const toolMessage = part.event as ChatMessage;
       if (shouldHideInternalToolMessage(toolMessage)) continue;
       if (freezoneToolStatus(toolMessage) !== "running") continue;
-      return `正在${freezoneToolDisplay(toolMessage)?.title ?? genericToolTitle(toolMessage)}`;
+      return isEnglishUi()
+        ? `Running ${freezoneToolDisplay(toolMessage)?.title ?? genericToolTitle(toolMessage)}`
+        : `正在${freezoneToolDisplay(toolMessage)?.title ?? genericToolTitle(toolMessage)}`;
     }
     if (part.type === "agent_plan" && part.event && typeof part.event === "object" && !Array.isArray(part.event)) {
       const entries = (part.event as Record<string, unknown>).entries;
@@ -2408,12 +2561,14 @@ function agentActivityLabelFromMessage(message: ChatMessage | undefined): string
         Boolean(entry && typeof entry === "object" && !Array.isArray(entry) && (entry as Record<string, unknown>).status === "in_progress"),
       );
       if (active && typeof (active as Record<string, unknown>).content === "string") {
-        return `正在${String((active as Record<string, unknown>).content)}`;
+        return isEnglishUi()
+          ? `Running ${String((active as Record<string, unknown>).content)}`
+          : `正在${String((active as Record<string, unknown>).content)}`;
       }
     }
     if (part.type === "agent_thought" && part.event && typeof part.event === "object" && !Array.isArray(part.event)) {
       const status = (part.event as Record<string, unknown>).status;
-      if (status === "running") return "正在分析当前信息";
+      if (status === "running") return isEnglishUi() ? "Analysing current information" : "正在分析当前信息";
     }
   }
   return null;
@@ -2441,7 +2596,7 @@ function CanvasCommandPlanList({ plans }: { plans: CanvasCommandPlan[] | undefin
           )}
         </div>
       ))}
-      {plans.length > 6 && <div className="px-1 text-[11px] text-muted-foreground">还有 {plans.length - 6} 个操作将在确认后一起执行</div>}
+      {plans.length > 6 && <div className="px-1 text-[11px] text-muted-foreground">{isEnglishUi() ? `${plans.length - 6} more operations will run together after confirmation` : `还有 ${plans.length - 6} 个操作将在确认后一起执行`}</div>}
     </div>
   );
 }
@@ -4197,7 +4352,13 @@ function canvasCommandFeedbackIsTimeoutCancelled(feedback: CanvasCommandFeedback
 
 type CanvasFeedbackVisualTone = "muted" | "warning" | "destructive" | "success";
 
-const EMPTY_AGENT_REPLY_TEXT = "这轮操作没有收到虾导的有效回复，请稍后重试。";
+// Shown when a turn produced no usable assistant text; the backend sends
+// the zh or en form depending on the UI language, so the comparison must
+// accept both.
+const EMPTY_AGENT_REPLY_TEXTS = new Set([
+  "这轮操作没有收到虾导的有效回复，请稍后重试。",
+  "No valid reply was received from Xia Director for this turn. Please try again shortly.",
+]);
 
 function canvasContextActivityVisualTone(activity: CanvasContextActivity): CanvasFeedbackVisualTone {
   if (activity.status === "failed") {
@@ -8534,7 +8695,7 @@ export const MessageBubble = memo(function MessageBubble({
     && (visibleCanvasCommandFeedbacks.length > 0 || canvasCommandApprovals.length > 0)
     && (
       looksLikeCanvasExecutionNarration(message.text)
-      || displayText.trim() === EMPTY_AGENT_REPLY_TEXT
+      || EMPTY_AGENT_REPLY_TEXTS.has(displayText.trim())
     );
   const hasCanvasCommandSurface =
     visibleCanvasCommandFeedbacks.length > 0
@@ -8586,8 +8747,8 @@ export const MessageBubble = memo(function MessageBubble({
 
   const copyText = async () => {
     const ok = await writeClipboardText(message.text);
-    if (ok) toast.success("已复制");
-    else toast.error("复制失败");
+    if (ok) toast.success(isEnglishUi() ? "Copied" : "已复制");
+    else toast.error(isEnglishUi() ? "Copy failed" : "复制失败");
   };
   const canSpeak = typeof window !== "undefined" && "speechSynthesis" in window;
   const speak = () => {
@@ -11055,6 +11216,41 @@ const CANVAS_CONTEXT_REQUEST_LABELS: Record<string, string> = {
   link_type_catalog: "连线类型",
   validate_canvas_commands: "命令校验",
 };
+const CANVAS_CONTEXT_REQUEST_LABELS_EN: Record<string, string> = {
+  canvas_ontology: "Canvas ontology",
+  canvas_summary: "Canvas summary",
+  canvas_action_catalog: "Canvas capabilities",
+  canvas_command_catalog: "Command rules",
+  node_detail: "Node details",
+  neighbor_graph: "Upstream/downstream relations",
+  node_action_catalog: "Node capabilities",
+  action_catalog: "Node capabilities",
+  action_catalog_by_id: "Capability details",
+  node_create_schema: "Node parameters",
+  audio_voice_options: "Voice options",
+  slot_candidates: "Submittable slots",
+  mainline_projection_assets: "Mainline assets",
+  selection_detail: "Current selection",
+  link_type_catalog: "Link types",
+  validate_canvas_commands: "Command validation",
+};
+
+// Display-only translation for canvas context labels. The zh values above are
+// also used to MATCH backend-produced activity labels, so they must stay
+// Chinese; these helpers translate only at render time.
+function canvasContextRequestLabel(key: string): string {
+  return isEnglishUi()
+    ? (CANVAS_CONTEXT_REQUEST_LABELS_EN[key] ?? CANVAS_CONTEXT_REQUEST_LABELS[key] ?? key)
+    : (CANVAS_CONTEXT_REQUEST_LABELS[key] ?? key);
+}
+function canvasContextDisplayLabel(label: string): string {
+  if (!isEnglishUi()) return label;
+  if (label === CANVAS_CONTEXT_THINKING_LABEL) return "Thinking...";
+  for (const [key, zhValue] of Object.entries(CANVAS_CONTEXT_REQUEST_LABELS)) {
+    if (zhValue === label) return CANVAS_CONTEXT_REQUEST_LABELS_EN[key] ?? label;
+  }
+  return label;
+}
 const CANVAS_CONTEXT_THINKING_LABEL = "正在思考中";
 type CanvasContextActivity = {
   key: string;
@@ -16454,7 +16650,7 @@ export function SuperChatPanel({
                         {t("freezone.chat.skillMenu.emptyHelp")}
                       </div>
                       <div className="mt-2 flex flex-wrap gap-1.5">
-                        {FREEZONE_SKILL_EMPTY_ACTIONS.map((action) => (
+                        {getFreezoneSkillEmptyActions().map((action) => (
                           <button
                             key={action.id}
                             type="button"
@@ -16927,7 +17123,7 @@ export function SuperChatPanel({
                     role="menu"
                     className="absolute right-0 top-[calc(100%+8px)] z-10 w-[218px] overflow-hidden rounded-[10px] border border-white/[0.12] bg-[#202126]/98 p-1.5 shadow-[0_18px_40px_rgba(0,0,0,0.45)] backdrop-blur-xl"
                   >
-                    {FREEZONE_SKILL_EMPTY_ACTIONS.map((action) => (
+                    {getFreezoneSkillEmptyActions().map((action) => (
                       <button
                         key={action.id}
                         type="button"
@@ -17032,7 +17228,7 @@ export function SuperChatPanel({
                       {t("freezone.chat.skillMenu.emptyHelp")}
                     </div>
                     <div className="mt-3 flex flex-wrap gap-2">
-                      {FREEZONE_SKILL_EMPTY_ACTIONS.map((action) => (
+                      {getFreezoneSkillEmptyActions().map((action) => (
                         <button
                           key={action.id}
                           type="button"

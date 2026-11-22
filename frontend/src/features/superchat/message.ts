@@ -1,11 +1,24 @@
 // SPDX-License-Identifier: Elastic-2.0
 // Copyright (c) 2026 ClaymoreLab
+import i18next from "i18next";
+
 import type { ChatAttachment, ChatMessage, ChatMessagePart, ChatRole } from "@/features/superchat/types";
 import { hasStructuredContent } from "@/features/superchat/spec-extract";
 
 const INTERNAL_CONTEXT_BLOCK_RE =
   /\n?\[((?:DRAMACLAW|SUPERTALE)_[A-Z0-9_]+)\][\s\S]*?\[\/\1\]\n?/g;
-const EMPTY_AGENT_REPLY_TEXT = "这轮操作没有收到虾导的有效回复，请稍后重试。";
+const EMPTY_AGENT_REPLY_TEXTS = {
+  zh: "这轮操作没有收到虾导的有效回复，请稍后重试。",
+  en: "No valid reply was received from Xia Director for this turn. Please try again shortly.",
+} as const;
+
+function emptyAgentReplyText(): string {
+  return (i18next.resolvedLanguage ?? i18next.language ?? "zh")
+    .toLowerCase()
+    .startsWith("en")
+    ? EMPTY_AGENT_REPLY_TEXTS.en
+    : EMPTY_AGENT_REPLY_TEXTS.zh;
+}
 const EMPTY_AGENT_REPLY_PLACEHOLDERS = new Set([
   "(hermes returned no content)",
   "(agent returned no content)",
@@ -77,7 +90,7 @@ function stripInternalContextBlocks(text: string): string {
 
 function normalizeDisplayText(text: string): string {
   const trimmed = text.trim();
-  return EMPTY_AGENT_REPLY_PLACEHOLDERS.has(trimmed) ? EMPTY_AGENT_REPLY_TEXT : text;
+  return EMPTY_AGENT_REPLY_PLACEHOLDERS.has(trimmed) ? emptyAgentReplyText() : text;
 }
 
 function textFromContent(content: unknown): string {

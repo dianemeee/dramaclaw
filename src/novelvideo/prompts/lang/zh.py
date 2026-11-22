@@ -45,3 +45,37 @@ STORY_SCRIPT_LANGUAGE_RULE = (
     "Keep all fields in Simplified Chinese except technical tokens "
     "when naturally needed."
 )
+
+# Display titles of the deterministic standard-planner workflow items
+# (``freezone/agent_workflows/catalog.py`` ``_standard_skill_items``).
+# These titles are shown verbatim in the Workflow progress card, so they
+# must follow the UI language. Suffix values are appended to the
+# agent-authored unit title (e.g. ``{title}画面``); keep them exactly as
+# the planner composes them (no leading space in Chinese).
+WORKFLOW_ITEM_TITLES = {
+    "outline": "内容规划",
+    "ad_outline": "广告创意大纲",
+    "product_anchor": "商品视觉锚点",
+    "character_setup": "角色设定",
+    "scene_setup": "场景设定",
+    "prop_setup": "道具设定",
+    "character_image": "角色身份图",
+    "scene_image": "场景参考图",
+    "prop_image": "道具参考图",
+    "shot_design_suffix": "镜头设计",
+    "first_frame_suffix": "首帧",
+    "frame_suffix": "画面",
+    "video_suffix": "视频",
+    "narration_suffix": "旁白",
+    "background_music": "背景音乐",
+    "outline_part": "第{index}段",
+    "outline_narration_label": "旁白：",
+    "outline_facts_header": "逐段事实与旁白（必须完整保留）：",
+    "deferred_narration_prompt": (
+        "只朗读上游镜头设计输出中的 narration、voiceover、"
+        "dialogue 或 speech_text 正文，不朗读制作说明。"
+    ),
+    "final_compose": "成片合成",
+    "final_compose_description": "汇总视频片段、配乐和旁白，进入时间线完成最终编排。",
+    "workflow_input": "用户需求 / 输入素材",
+}

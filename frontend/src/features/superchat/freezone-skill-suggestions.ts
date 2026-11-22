@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: Elastic-2.0
 // Copyright (c) 2026 ClaymoreLab
+import i18next from "i18next";
+
 import type { FreezoneAgentConfigPayload } from "@/lib/queries/freezone-agent-config";
 
 export type FreezoneSkillSuggestion = {
@@ -38,6 +40,30 @@ export const FREEZONE_SKILL_EMPTY_ACTIONS: FreezoneSkillEmptyAction[] = [
     prompt: "帮我创建一个 Skill：",
   },
 ];
+
+// English counterpart of FREEZONE_SKILL_EMPTY_ACTIONS. The prompts are
+// what gets inserted into the composer and sent to the agent, so they
+// are English too when the UI is English.
+const FREEZONE_SKILL_EMPTY_ACTIONS_EN: FreezoneSkillEmptyAction[] = [
+  {
+    id: "summarize-canvas",
+    label: "Summarise canvas as Skill",
+    prompt: "Summarise the current canvas as a reusable Skill",
+  },
+  {
+    id: "create-with-agent",
+    label: "Create a Skill with Agent",
+    prompt: "Help me create a Skill:",
+  },
+];
+
+export function getFreezoneSkillEmptyActions(): FreezoneSkillEmptyAction[] {
+  return (i18next.resolvedLanguage ?? i18next.language ?? "zh")
+    .toLowerCase()
+    .startsWith("en")
+    ? FREEZONE_SKILL_EMPTY_ACTIONS_EN
+    : FREEZONE_SKILL_EMPTY_ACTIONS;
+}
 
 function readString(value: unknown): string {
   return typeof value === "string" ? value.trim() : "";

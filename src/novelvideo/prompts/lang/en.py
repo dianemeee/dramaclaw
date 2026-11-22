@@ -40,3 +40,39 @@ director_language: en
 STORY_SCRIPT_LANGUAGE_RULE = (
     "Keep all fields in English except technical tokens when naturally needed."
 )
+
+# English display titles of the deterministic standard-planner workflow
+# items (see ``lang/zh.py`` for the layout contract). Suffix values are
+# appended to the agent-authored unit title, so they carry a leading
+# space in English (``{title} Frame``) where Chinese has none.
+WORKFLOW_ITEM_TITLES = {
+    "outline": "Content Planning",
+    "ad_outline": "Ad Creative Outline",
+    "product_anchor": "Product Visual Anchor",
+    "character_setup": "Character Setup",
+    "scene_setup": "Scene Setup",
+    "prop_setup": "Prop Setup",
+    "character_image": "Character Identity Image",
+    "scene_image": "Scene Reference Image",
+    "prop_image": "Prop Reference Image",
+    "shot_design_suffix": " Shot Design",
+    "first_frame_suffix": " First Frame",
+    "frame_suffix": " Frame",
+    "video_suffix": " Video",
+    "narration_suffix": " Narration",
+    "background_music": "Background Music",
+    "outline_part": "Part {index}",
+    "outline_narration_label": "Narration: ",
+    "outline_facts_header": "Per-part facts and narration (must be kept in full):",
+    "deferred_narration_prompt": (
+        "Only read aloud the narration, voiceover, dialogue or "
+        "speech_text from the upstream shot-design output. "
+        "Do not read production notes."
+    ),
+    "final_compose": "Final Composition",
+    "final_compose_description": (
+        "Combine the video clips, music and narration into the "
+        "timeline for the final cut."
+    ),
+    "workflow_input": "User Request / Input Material",
+}

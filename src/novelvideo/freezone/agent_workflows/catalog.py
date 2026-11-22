@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Any
 
 from novelvideo.chat.agent_key_session import agent_key_mode
+from novelvideo.prompts.lang import resolve_director_language, workflow_item_titles
 from novelvideo.freezone.workflow_schema import (
     EXTERNAL_INPUT_NODE_TYPES,
     PORTABLE_VIDEO_GENERATION_MODES,
@@ -2040,6 +2041,10 @@ def compile_workflow_intent(
     compiled_intent = deepcopy(intent)
     planner_metadata: dict[str, Any] | None = None
     plan_metadata: dict[str, Any] | None = None
+    # Display language for planner-generated node titles: the agent may
+    # carry it in the intent; otherwise the DRAMACLAW_UI_LANGUAGE env
+    # var (via resolve_director_language in _standard_skill_items).
+    intent_language = _text(intent.get("language")) or _text(intent.get("ui_language")) or None
     requested_mode = (
         _text((intent.get("planner") or {}).get("mode"))
         if isinstance(intent.get("planner"), dict)
@@ -2066,6 +2071,7 @@ def compile_workflow_intent(
                 user_goal=user_goal,
                 resolved_inputs=input_contract["resolved"],
                 include_unit_facts=_include_unit_facts,
+                language=intent_language,
             )
         )
         if planner_error is not None:
@@ -2175,6 +2181,7 @@ def _standard_outline_prompt(
     skill_id: str,
     user_goal: str,
     units: list[dict[str, Any]],
+    language: str | None = None,
 ) -> str:
     """Keep standard tutorial outline input connected to each planned unit.
 
@@ -2185,22 +2192,25 @@ def _standard_outline_prompt(
     """
     if skill_id != "video-tutorial" or not units:
         return user_goal
+    lang = resolve_director_language(language)
+    titles = workflow_item_titles(lang)
+    title_sep = "：" if lang == "zh" else ": "
     briefs: list[str] = []
     for index, unit in enumerate(units, 1):
         if not isinstance(unit, dict):
             continue
-        title = _text(unit.get("title")) or f"第{index}段"
+        title = _text(unit.get("title")) or titles["outline_part"].format(index=index)
         prompt = _text(unit.get("prompt"))
         narration = _text(unit.get("narration"))
-        parts = [f"{title}："]
+        parts = [f"{title}{title_sep}"]
         if prompt:
             parts.append(prompt)
         if narration:
-            parts.append(f"旁白：{narration}")
+            parts.append(f"{titles['outline_narration_label']}{narration}")
         briefs.append(" ".join(parts))
     if not briefs:
         return user_goal
-    return f"{user_goal}\n逐段事实与旁白（必须完整保留）：\n" + "\n".join(briefs)
+    return f"{user_goal}\n{titles['outline_facts_header']}\n" + "\n".join(briefs)
 
 
 def _standard_skill_items(
@@ -2214,13 +2224,19 @@ def _standard_skill_items(
     image_recipe_id: str = "",
     include_unit_facts: bool = True,
     video_dependency: str = "independent",
+    language: str | None = None,
 ) -> list[dict[str, Any]]:
     items: list[dict[str, Any]] = []
+    # Workflow item titles are shown verbatim in the Workflow progress
+    # card, so they follow the UI language: explicit intent language,
+    # else the DRAMACLAW_UI_LANGUAGE env var, else zh (upstream).
+    lang = resolve_director_language(language)
+    titles = workflow_item_titles(lang)
     if skill_id == "ecommerce-ad":
         items.append(
             _planned_item(
                 item_id="creative_outline",
-                title="广告创意大纲",
+                title=titles["ad_outline"],
                 prompt=user_goal,
                 recipe_id="video-ad-creative-outline",
                 depends_on=["workflow_input"],
@@ -2240,7 +2256,7 @@ def _standard_skill_items(
             items.append(
                 _planned_item(
                     item_id="product_reference",
-                    title="商品视觉锚点",
+                    title=titles["product_anchor"],
                     prompt=f"{user_goal}，生成稳定一致的商品主体参考图",
                     recipe_id="general-image",
                     depends_on=["creative_outline"],
@@ -2273,7 +2289,7 @@ def _standard_skill_items(
                 items.append(
                     _planned_item(
                         item_id=f"clip_{index}",
-                        title=f"{unit['title']}视频",
+                        title=f"{unit['title']}{titles['video_suffix']}",
                         prompt=unit["prompt"],
                         recipe_id="video-clip-generation",
                         depends_on=dependencies,
@@ -2286,7 +2302,7 @@ def _standard_skill_items(
                 items.append(
                     _planned_item(
                         item_id=f"voice_{index}",
-                        title=f"{unit['title']}旁白",
+                        title=f"{unit['title']}{titles['narration_suffix']}",
                         prompt=unit["narration"],
                         narration=unit["narration"],
                         recipe_id="general-audio",
@@ -2306,10 +2322,13 @@ def _standard_skill_items(
     items.append(
         _planned_item(
             item_id="outline",
-            title="内容规划",
+            title=titles["outline"],
             prompt=(
                 _standard_outline_prompt(
-                    skill_id=skill_id, user_goal=user_goal, units=units
+                    skill_id=skill_id,
+                    user_goal=user_goal,
+                    units=units,
+                    language=lang,
                 )
                 if include_unit_facts
                 else user_goal
@@ -2323,31 +2342,31 @@ def _standard_skill_items(
         asset_specs = (
             (
                 "characters",
-                "角色设定",
+                titles["character_setup"],
                 "提取主要角色、身份、外形、服装和跨镜头连续性要求",
                 "drama-character-extraction",
                 "character_assets",
-                "角色身份图",
+                titles["character_image"],
                 "根据角色设定生成稳定的角色身份与转面参考图",
                 "drama-character-turnaround",
             ),
             (
                 "scenes",
-                "场景设定",
+                titles["scene_setup"],
                 "提取主要场景、空间关系、时代信息和统一视觉风格",
                 "drama-scene-extraction",
                 "scene_assets",
-                "场景参考图",
+                titles["scene_image"],
                 "根据场景设定生成稳定的场景视觉参考图",
                 "drama-scene-image",
             ),
             (
                 "props",
-                "道具设定",
+                titles["prop_setup"],
                 "提取关键道具、外观细节、持有关系和剧情用途",
                 "drama-prop-extraction",
                 "prop_assets",
-                "道具参考图",
+                titles["prop_image"],
                 "根据道具设定生成稳定的关键道具参考图",
                 "drama-prop-image",
             ),
@@ -2389,7 +2408,7 @@ def _standard_skill_items(
             items.append(
                 _planned_item(
                     item_id=source_id,
-                    title=f"{unit['title']}镜头设计",
+                    title=f"{unit['title']}{titles['shot_design_suffix']}",
                     prompt=unit["prompt"],
                     recipe_id="drama-shot-group-detail",
                     depends_on=["outline", "characters", "scenes", "props"],
@@ -2400,7 +2419,7 @@ def _standard_skill_items(
             items.append(
                 _planned_item(
                     item_id=frame_id,
-                    title=f"{unit['title']}首帧",
+                    title=f"{unit['title']}{titles['first_frame_suffix']}",
                     prompt=unit["prompt"],
                     recipe_id="general-image",
                     depends_on=[
@@ -2424,7 +2443,7 @@ def _standard_skill_items(
             items.append(
                 _planned_item(
                     item_id=source_id,
-                    title=f"{unit['title']}画面",
+                    title=f"{unit['title']}{titles['frame_suffix']}",
                     prompt=unit["prompt"],
                     recipe_id="general-image",
                     depends_on=["outline"],
@@ -2448,7 +2467,7 @@ def _standard_skill_items(
             items.append(
                 _planned_item(
                     item_id=f"clip_{index}",
-                    title=f"{unit['title']}视频",
+                    title=f"{unit['title']}{titles['video_suffix']}",
                     prompt=unit["prompt"],
                     recipe_id="general-video",
                     depends_on=video_dependencies,
@@ -2473,11 +2492,9 @@ def _standard_skill_items(
             items.append(
                 _planned_item(
                     item_id=f"voice_{index}",
-                    title=f"{unit['title']}旁白",
+                    title=f"{unit['title']}{titles['narration_suffix']}",
                     prompt=(
-                        narration
-                        or "只朗读上游镜头设计输出中的 narration、voiceover、"
-                        "dialogue 或 speech_text 正文，不朗读制作说明。"
+                        narration or titles["deferred_narration_prompt"]
                     ),
                     narration=narration,
                     recipe_id=(
@@ -2497,7 +2514,7 @@ def _standard_skill_items(
         items.append(
             _planned_item(
                 item_id="background_music",
-                title="背景音乐",
+                title=titles["background_music"],
                 prompt=f"{user_goal}，生成与情绪节奏匹配的纯音乐",
                 recipe_id="drama-background-music",
                 depends_on=["outline"],
@@ -2662,6 +2679,7 @@ def _expand_standard_skill_intent(
     user_goal: str,
     resolved_inputs: dict[str, Any],
     include_unit_facts: bool = True,
+    language: str | None = None,
 ) -> tuple[dict[str, Any], dict[str, Any] | None, dict[str, Any] | None]:
     profile = _DETERMINISTIC_SKILL_PLANNERS.get(skill_id)
     if profile is None:
@@ -2882,6 +2900,7 @@ def _expand_standard_skill_intent(
         image_recipe_id=image_recipe_id,
         include_unit_facts=include_unit_facts,
         video_dependency=video_dependency,
+        language=language,
     )
     # A deterministic standard workflow must also be executable without asking
     # the Agent to discover model ids. Keep the symbolic value in the plan; the
@@ -2937,6 +2956,12 @@ def _compile_dynamic_recipe_items_intent(
             "dynamic workflow intent must include at least one recipe-backed item",
             path="items",
         )
+    # Compose-node labels are shown verbatim in the Workflow card, so they
+    # follow the UI language like the standard-planner titles do.
+    compose_lang = resolve_director_language(
+        _text(intent.get("language")) or _text(intent.get("ui_language")) or None
+    )
+    compose_titles = workflow_item_titles(compose_lang)
 
     recipes = _intent_recipe_index()
     use_native_social_ratios = False
@@ -2969,12 +2994,12 @@ def _compile_dynamic_recipe_items_intent(
         {
             "id": "workflow_input",
             "node_type": "textAnnotationNode",
-            "name": "用户需求 / 输入素材",
+            "name": compose_titles["workflow_input"],
             "description": user_goal,
             "stage": "input",
             "data": {
-                "displayName": "用户需求 / 输入素材",
-                "title": "用户需求 / 输入素材",
+                "displayName": compose_titles["workflow_input"],
+                "title": compose_titles["workflow_input"],
                 "content": user_goal,
                 "prompt": user_goal,
                 "workflowCatalogRole": "user_input",
@@ -3302,14 +3327,14 @@ def _compile_dynamic_recipe_items_intent(
                 {
                     "id": compose_id,
                     "node_type": "videoComposeNode",
-                    "name": "成片合成",
-                    "description": "汇总视频片段、配乐和旁白，进入时间线完成最终编排。",
+                    "name": compose_titles["final_compose"],
+                    "description": compose_titles["final_compose_description"],
                     "stage": "compose",
                     "data": {
-                        "displayName": "成片合成",
-                        "title": "成片合成",
-                        "content": "汇总视频片段、配乐和旁白，进入时间线完成最终编排。",
-                        "prompt": "汇总视频片段、配乐和旁白，进入时间线完成最终编排。",
+                        "displayName": compose_titles["final_compose"],
+                        "title": compose_titles["final_compose"],
+                        "content": compose_titles["final_compose_description"],
+                        "prompt": compose_titles["final_compose_description"],
                         # Keep the intent's semantic source order. Canvas node ids
                         # are allocated later, so the frontend resolves these plan
                         # ids through each node's workflowPlanNodeId.

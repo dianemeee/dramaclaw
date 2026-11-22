@@ -1441,34 +1441,48 @@ function incompleteSkillStudioDraftEvent(chunks: PendingSkillStudioDraftChunks):
     .map(([, recipe]) => recipe);
   const expected = Math.max(0, chunks.expectedRecipeCount ?? recipes.length);
   const missingRecipeCount = Math.max(0, expected - recipes.length);
-  const warnings = [
-    "Agent 已提交了一部分内容，但本轮对话已结束，草稿还不能保存。",
-    chunks.skill ? "已生成 Skill 基础配置。" : "缺少 Skill 基础配置。",
-    expected > 0
-      ? `Recipe 已生成 ${recipes.length} / ${expected}，缺少 ${missingRecipeCount} 个。`
-      : recipes.length > 0
-        ? `Recipe 已生成 ${recipes.length} 个。`
-        : "本轮未提交新 Recipe。",
-    "缺少最终草稿整理。",
-  ];
+  const en = (i18next.resolvedLanguage ?? i18next.language ?? "zh")
+    .toLowerCase()
+    .startsWith("en");
+  const warnings = en
+    ? [
+        "The Agent submitted part of the content, but this turn has ended, so the draft cannot be saved yet.",
+        chunks.skill ? "Skill base config generated." : "Skill base config missing.",
+        expected > 0
+          ? `Recipes generated ${recipes.length} / ${expected}, missing ${missingRecipeCount}.`
+          : recipes.length > 0
+            ? `Recipes generated: ${recipes.length}.`
+            : "No new Recipe submitted this turn.",
+        "Final draft consolidation is missing.",
+      ]
+    : [
+        "Agent 已提交了一部分内容，但本轮对话已结束，草稿还不能保存。",
+        chunks.skill ? "已生成 Skill 基础配置。" : "缺少 Skill 基础配置。",
+        expected > 0
+          ? `Recipe 已生成 ${recipes.length} / ${expected}，缺少 ${missingRecipeCount} 个。`
+          : recipes.length > 0
+            ? `Recipe 已生成 ${recipes.length} 个。`
+            : "本轮未提交新 Recipe。",
+        "缺少最终草稿整理。",
+      ];
   return {
     type: "skill_studio.draft",
     bridge_key: `incomplete:${chunks.sessionId}`,
     skill_studio_session_id: chunks.sessionId,
     mode: chunks.mode ?? "create",
-    summary: chunks.summary || "Skill 草稿未完成",
+    summary: chunks.summary || (en ? "Skill draft incomplete" : "Skill 草稿未完成"),
     skill: chunks.skill ?? {},
     recipes,
     warnings,
     incomplete: true,
     read_only: true,
     missing_items: [
-      ...(chunks.skill ? [] : ["Skill 基础配置"]),
+      ...(chunks.skill ? [] : [en ? "Skill base config" : "Skill 基础配置"]),
       ...(missingRecipeCount > 0 ? [`Recipe ${recipes.length + 1} / ${expected}`] : []),
-      "最终草稿整理",
+      en ? "Final draft consolidation" : "最终草稿整理",
     ],
     completed_items: [
-      ...(chunks.skill ? ["Skill 基础配置"] : []),
+      ...(chunks.skill ? [en ? "Skill base config" : "Skill 基础配置"] : []),
       ...(recipes.length > 0 ? [`Recipe ${recipes.length} / ${expected || recipes.length}`] : []),
     ],
   };
@@ -2513,7 +2527,13 @@ export function useSuperChat({
           upsertAssistantUiEvent(current, turnId, {
             type: "skill_studio.status",
             status: typeof frame.status === "string" ? frame.status : "routing",
-            message: typeof frame.message === "string" ? frame.message : "正在整理 Skill 方向...",
+            message: typeof frame.message === "string"
+              ? frame.message
+              : (i18next.resolvedLanguage ?? i18next.language ?? "zh")
+                  .toLowerCase()
+                  .startsWith("en")
+                ? "Organising the Skill direction..."
+                : "正在整理 Skill 方向...",
             turn_id: turnId,
           }),
         );
@@ -2595,7 +2615,11 @@ export function useSuperChat({
             ?? activeTurnIdRef.current
             ?? pendingClientTurnIdRef.current
             ?? `turn-${Date.now()}`;
-          const persistedErrorText = `本轮处理失败：${errorMessage}\n\n请根据错误提示处理后重试。`;
+          const persistedErrorText = (i18next.resolvedLanguage ?? i18next.language ?? "zh")
+            .toLowerCase()
+            .startsWith("en")
+            ? `This turn failed: ${errorMessage}\n\nPlease act on the error message above and retry.`
+            : `本轮处理失败：${errorMessage}\n\n请根据错误提示处理后重试。`;
           setMessages((current) => {
             const next = upsertAssistantMessage(current, failedTurnId, persistedErrorText);
             saveCachedMessages(scopeKey, next);
@@ -2930,7 +2954,7 @@ export function useSuperChat({
           return next;
         });
         const cancelledMessage = i18next.t("freezone.chat.clarification.cancelledRequest", {
-          defaultValue: "用户已取消本轮请求",
+          defaultValue: "The user cancelled this request.",
         });
         for (const event of pendingClarifications) {
           void api.post("api/v1/chat/clarification-tool-result", {

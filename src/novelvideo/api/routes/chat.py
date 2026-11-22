@@ -111,6 +111,7 @@ from novelvideo.freezone.agent_config_store import save_user_agent_config_item
 from novelvideo.freezone.agent_product_operations import AGENT_PRODUCT_PRICE_REFERENCE
 from novelvideo.ports import get_product_surface_access, get_usage_meter
 from novelvideo.ports.local.usage import NoOpUsageMeter
+from novelvideo.prompts.lang import resolve_director_language
 from novelvideo.project_context import (
     ProjectContext,
     require_project_home_node,
@@ -135,6 +136,103 @@ logger = logging.getLogger(__name__)
 
 AI_ASSISTANT_CHAT_FEATURE_KEY = "assistant.chat"
 EMPTY_AGENT_REPLY_MESSAGE = "这轮操作没有收到虾导的有效回复，请稍后重试。"
+
+# User-facing chat error copy, keyed by director language. The Chinese
+# strings are the historical behaviour; the English ones are shown when
+# the UI language is en (``ui_language`` in the chat context, else the
+# DRAMACLAW_UI_LANGUAGE env var). ``resolve_director_language`` falls
+# back to zh, so call sites that cannot see the language keep the old text.
+_CHAT_ERROR_STRINGS = {
+    "zh": {
+        "runtime_unavailable": "本地助手运行时不可用：请重启应用；若仍失败，请更新应用并导出诊断日志。",
+        "malformed_tool_call": "模型生成的工具调用参数不完整，本轮已停止。请重新发送刚才的需求。",
+        "reasoning_required": (
+            "模型请求失败：当前上游模型要求启用推理，但模型网关仍将本次请求识别为关闭推理。"
+            "请检查 NewAPI 的模型映射和推理参数配置后重试。"
+        ),
+        "timeout": "模型响应超时：上游服务未在规定时间内返回结果，请稍后重试。",
+        "connection": "模型连接失败：当前无法连接上游模型服务，请检查服务状态后重试。",
+        "no_cause": "本轮处理失败：服务未返回可识别的错误原因，请稍后重试。",
+        "empty_reply": "这轮操作没有收到虾导的有效回复，请稍后重试。",
+        "turn_failed_prefix": "本轮处理失败：",
+        "retry_hint": "请根据错误提示处理后重试。",
+    },
+    "en": {
+        "runtime_unavailable": (
+            "The local assistant runtime is unavailable. Please restart the "
+            "app; if it still fails, update the app and export the diagnostic log."
+        ),
+        "malformed_tool_call": (
+            "The model's tool call was incomplete, so this turn was stopped. "
+            "Please resend your request."
+        ),
+        "reasoning_required": (
+            "Model request failed: the upstream model requires reasoning to be "
+            "enabled, but the model gateway still treats this request as "
+            "reasoning-off. Please check the NewAPI model mapping and reasoning "
+            "settings, then retry."
+        ),
+        "timeout": (
+            "Model response timed out: the upstream service did not return a "
+            "result in time. Please try again shortly."
+        ),
+        "connection": (
+            "Model connection failed: the upstream model service cannot be "
+            "reached right now. Please check the service status and retry."
+        ),
+        "no_cause": (
+            "This turn failed: the service returned no identifiable error "
+            "cause. Please try again shortly."
+        ),
+        "empty_reply": (
+            "No valid reply was received from Xia Director for this turn. "
+            "Please try again shortly."
+        ),
+        "turn_failed_prefix": "This turn failed: ",
+        "retry_hint": "Please act on the error message above and retry.",
+    },
+    "id": {
+        "runtime_unavailable": (
+            "Runtime asisten lokal tidak tersedia. Silakan restart aplikasi; "
+            "jika masih gagal, perbarui aplikasi dan ekspor log diagnostik."
+        ),
+        "malformed_tool_call": (
+            "Pemanggilan tool dari model tidak lengkap, jadi giliran ini "
+            "dihentikan. Silakan kirim ulang permintaan Anda."
+        ),
+        "reasoning_required": (
+            "Permintaan model gagal: model upstream meminta reasoning diaktifkan, "
+            "tetapi gateway model masih menganggap permintaan ini reasoning-off. "
+            "Silakan periksa pemetaan model NewAPI dan pengaturan reasoning, "
+            "lalu coba lagi."
+        ),
+        "timeout": (
+            "Respons model habis waktu: layanan upstream tidak mengembalikan "
+            "hasil tepat waktu. Silakan coba lagi sebentar."
+        ),
+        "connection": (
+            "Koneksi model gagal: layanan model upstream tidak dapat dijangkau "
+            "saat ini. Silakan periksa status layanan lalu coba lagi."
+        ),
+        "no_cause": (
+            "Giliran ini gagal: layanan tidak mengembalikan penyebab error "
+            "yang dapat dikenali. Silakan coba lagi sebentar."
+        ),
+        "empty_reply": (
+            "Tidak ada balasan valid dari Xia Director untuk giliran ini. "
+            "Silakan coba lagi sebentar."
+        ),
+        "turn_failed_prefix": "Giliran ini gagal: ",
+        "retry_hint": "Silakan ikuti pesan error di atas lalu coba lagi.",
+    },
+}
+
+
+def _chat_error_text(key: str, language: object | None = None) -> str:
+    """User-facing chat error copy for ``language`` (zh fallback)."""
+    lang = resolve_director_language(language)
+    strings = _CHAT_ERROR_STRINGS.get(lang) or _CHAT_ERROR_STRINGS["zh"]
+    return strings[key]
 _SHUTDOWN_POLL_INTERVAL_SECONDS = 0.5
 
 # 出网台账里这条链路的 capability 口径。取自
@@ -148,31 +246,38 @@ _REASONING_REQUIRED_ERROR_MESSAGE = (
 )
 
 
-def _user_facing_chat_error(exc: BaseException) -> str:
+def _user_facing_chat_error(
+    exc: BaseException, language: object | None = None
+) -> str:
     """Turn provider/runtime failures into stable, safe chat copy."""
+    lang = resolve_director_language(language)
 
     from novelvideo.chat.codex_app_server import CodexRuntimeError
     from novelvideo.chat.hermes_fork_requirement import HermesForkMissing
 
     if isinstance(exc, (CodexRuntimeError, HermesForkMissing)):
-        return "本地助手运行时不可用：请重启应用；若仍失败，请更新应用并导出诊断日志。"
+        return _chat_error_text("runtime_unavailable", lang)
 
     raw = safe_exception_message(exc).strip()
     if isinstance(exc, CodexMalformedToolCallError) or _is_malformed_tool_call_error(raw):
-        return CODEX_MALFORMED_TOOL_CALL_MESSAGE
+        if lang == "zh":
+            return CODEX_MALFORMED_TOOL_CALL_MESSAGE
+        return _chat_error_text("malformed_tool_call", lang)
     lowered = raw.lower()
     if "reasoning is mandatory" in lowered and "cannot be disabled" in lowered:
-        return _REASONING_REQUIRED_ERROR_MESSAGE
+        if lang == "zh":
+            return _REASONING_REQUIRED_ERROR_MESSAGE
+        return _chat_error_text("reasoning_required", lang)
     if "timed out" in lowered or "timeout" in lowered or "响应超时" in raw:
-        return "模型响应超时：上游服务未在规定时间内返回结果，请稍后重试。"
+        return _chat_error_text("timeout", lang)
     if "connection refused" in lowered or "connection error" in lowered:
-        return "模型连接失败：当前无法连接上游模型服务，请检查服务状态后重试。"
+        return _chat_error_text("connection", lang)
 
     # The websocket used to expose this text directly in a transient red banner.
     # Keep the useful cause, but remove local paths/secrets and cap provider dumps.
     safe = chat_service._redact_local_filesystem_paths(raw).strip()  # type: ignore[attr-defined]
     if not safe:
-        return "本轮处理失败：服务未返回可识别的错误原因，请稍后重试。"
+        return _chat_error_text("no_cause", lang)
     if len(safe) > 800:
         safe = f"{safe[:800].rstrip()}…"
     return safe
@@ -731,10 +836,14 @@ async def _persist_chat_turn_error(
     scope: ChatScope,
     turn_id: str,
     reason: str,
+    language: object | None = None,
 ) -> dict[str, Any] | None:
     """Persist a terminal turn error so history reconciliation cannot erase it."""
 
-    content = f"本轮处理失败：{reason}\n\n请根据错误提示处理后重试。"
+    content = (
+        f"{_chat_error_text('turn_failed_prefix', language)}{reason}\n\n"
+        f"{_chat_error_text('retry_hint', language)}"
+    )
     try:
         project_ctx = (
             await _project_context_for_scope(user, scope)
@@ -4410,7 +4519,12 @@ async def _stream_home_turn(
             assistant_text,
             tool_mode="freezone_canvas" if _is_freezone_scope(scope) else "default",
         )
-        assistant_text = assistant_text.strip() or EMPTY_AGENT_REPLY_MESSAGE
+        assistant_text = assistant_text.strip() or _chat_error_text(
+            "empty_reply",
+            (surface_context or {}).get("ui_language")
+            if isinstance(surface_context, dict)
+            else None,
+        )
         message = await chat_store.append_message_async(
             username,
             scope,
@@ -4820,13 +4934,23 @@ async def chat_ws(websocket: WebSocket) -> None:
                     ),
                     message,
                 )
-                user_message = _user_facing_chat_error(exc)
+                # The chat message carries ui_language in its context
+                # (Freezone forwards it; Series falls back to the
+                # DRAMACLAW_UI_LANGUAGE env var inside the resolver).
+                turn_context = getattr(msg, "context", None)
+                turn_language = (
+                    turn_context.get("ui_language")
+                    if isinstance(turn_context, dict)
+                    else None
+                )
+                user_message = _user_facing_chat_error(exc, turn_language)
                 persisted_error = await _persist_chat_turn_error(
                     user=user,
                     username=username,
                     scope=scope,
                     turn_id=turn_id,
                     reason=user_message,
+                    language=turn_language,
                 )
                 if persisted_error is not None:
                     await _send_json_best_effort(
