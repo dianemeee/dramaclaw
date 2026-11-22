@@ -7349,8 +7349,8 @@ function AssistantClarificationInputCard({
   };
 
   return (
-	    <div className="bg-transparent px-4 pb-3 pt-3 text-sm">
-	      <div className="mb-2.5 grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
+	    <div className="flex max-h-[min(70vh,560px)] flex-col bg-transparent px-4 pb-3 pt-3 text-sm">
+	      <div className="mb-2.5 grid shrink-0 grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
 	        <div className="min-w-0">
 	          <div className="line-clamp-2 break-words text-sm font-medium leading-5 text-foreground">
 	            {activeQuestion?.title || activeQuestion?.question || event.title || "需要你补充一点信息"}
@@ -7385,70 +7385,72 @@ function AssistantClarificationInputCard({
           </div>
         )}
       </div>
-      {activeQuestion ? (
-        <div className="overflow-hidden rounded-2xl bg-white/[0.035] ring-1 ring-white/[0.07]">
-          <div className="flex items-center justify-between gap-2 px-3 py-2 text-[11px] text-muted-foreground/80">
-            <span>{activeSelectionMode === "multiple" ? "可多选，也可以补充" : "选择一个方向，也可以补充"}</span>
-            {activeSelectionMode === "multiple" && (
-              <span className="shrink-0 rounded-full bg-white/[0.05] px-2 py-1 text-[11px] text-muted-foreground">
-                多选
-              </span>
-            )}
-          </div>
-          <div className="divide-y divide-white/[0.06]">
-            {(activeQuestion.options ?? []).map((option, optionIndex) => {
-              const optionKey = skillStudioOptionKey(option, optionIndex);
-              const selected = activeSelection.optionIds.includes(optionKey);
-              return (
-                <button
-	                  key={option.id || optionIndex}
-	                  type="button"
-	                  role={activeSelectionMode === "multiple" ? "checkbox" : "radio"}
-	                  aria-checked={selected}
-	                  className={cn(
-	                    "group flex w-full items-start gap-3 px-3 py-3 text-left transition-colors",
-	                    selected ? "bg-white/[0.09]" : "hover:bg-white/[0.05]",
-	                  )}
-	                  onClick={() => selectOption(activeQuestion, activeQuestionIndex, optionKey)}
-	                >
-	                  <QuestionOptionSelectionMark selected={selected} mode={activeSelectionMode} />
-	                  <span className="min-w-0 flex-1">
-                    <span className="block break-words text-sm leading-5 text-foreground/88">
-                      {option.label || option.id || `选项 ${optionIndex + 1}`}
-                    </span>
-                    {option.description && (
-                      <span className="mt-0.5 block line-clamp-2 break-words text-xs leading-4 text-muted-foreground">
-                        {option.description}
+      <div className="ui-scrollbar min-h-0 flex-1 overflow-y-auto overscroll-contain pr-1">
+        {activeQuestion ? (
+          <div className="overflow-hidden rounded-2xl bg-white/[0.035] ring-1 ring-white/[0.07]">
+            <div className="flex items-center justify-between gap-2 px-3 py-2 text-[11px] text-muted-foreground/80">
+              <span>{activeSelectionMode === "multiple" ? "可多选，也可以补充" : "选择一个方向，也可以补充"}</span>
+              {activeSelectionMode === "multiple" && (
+                <span className="shrink-0 rounded-full bg-white/[0.05] px-2 py-1 text-[11px] text-muted-foreground">
+                  多选
+                </span>
+              )}
+            </div>
+            <div className="divide-y divide-white/[0.06]">
+              {(activeQuestion.options ?? []).map((option, optionIndex) => {
+                const optionKey = skillStudioOptionKey(option, optionIndex);
+                const selected = activeSelection.optionIds.includes(optionKey);
+                return (
+                  <button
+  	                  key={option.id || optionIndex}
+  	                  type="button"
+  	                  role={activeSelectionMode === "multiple" ? "checkbox" : "radio"}
+  	                  aria-checked={selected}
+  	                  className={cn(
+  	                    "group flex w-full items-start gap-3 px-3 py-3 text-left transition-colors",
+  	                    selected ? "bg-white/[0.09]" : "hover:bg-white/[0.05]",
+  	                  )}
+  	                  onClick={() => selectOption(activeQuestion, activeQuestionIndex, optionKey)}
+  	                >
+  	                  <QuestionOptionSelectionMark selected={selected} mode={activeSelectionMode} />
+  	                  <span className="min-w-0 flex-1">
+                      <span className="block break-words text-sm leading-5 text-foreground/88">
+                        {option.label || option.id || `选项 ${optionIndex + 1}`}
                       </span>
-                    )}
-                  </span>
-                  {activeSelectionMode === "single" && <ChevronRight className="mt-1 size-4 shrink-0 text-muted-foreground/65" />}
-                </button>
-              );
-            })}
-            {skillStudioQuestionAllowsCustom(activeQuestion) && (
-              <div className="px-3 py-2.5">
-                <Textarea
-                  value={activeSelection.customText}
-                  onChange={(changeEvent) => updateCustomText(activeQuestion, activeQuestionIndex, changeEvent.target.value)}
-                  placeholder="其他补充..."
-                  className="min-h-11 resize-none rounded-xl border-0 bg-white/[0.05] px-3 py-2 text-sm leading-5 shadow-none placeholder:text-muted-foreground/65 focus-visible:ring-1 focus-visible:ring-white/15"
-                />
-              </div>
-            )}
+                      {option.description && (
+                        <span className="mt-0.5 block line-clamp-2 break-words text-xs leading-4 text-muted-foreground">
+                          {option.description}
+                        </span>
+                      )}
+                    </span>
+                    {activeSelectionMode === "single" && <ChevronRight className="mt-1 size-4 shrink-0 text-muted-foreground/65" />}
+                  </button>
+                );
+              })}
+              {skillStudioQuestionAllowsCustom(activeQuestion) && (
+                <div className="px-3 py-2.5">
+                  <Textarea
+                    value={activeSelection.customText}
+                    onChange={(changeEvent) => updateCustomText(activeQuestion, activeQuestionIndex, changeEvent.target.value)}
+                    placeholder="其他补充..."
+                    className="min-h-11 resize-none rounded-xl border-0 bg-white/[0.05] px-3 py-2 text-sm leading-5 shadow-none placeholder:text-muted-foreground/65 focus-visible:ring-1 focus-visible:ring-white/15"
+                  />
+                </div>
+              )}
+            </div>
           </div>
-        </div>
-      ) : (
-        <div className="rounded-2xl border border-white/[0.08] bg-white/[0.025] px-3 py-6 text-center text-xs text-muted-foreground">
-          暂无可选择的问题
-        </div>
-      )}
+        ) : (
+          <div className="rounded-2xl border border-white/[0.08] bg-white/[0.025] px-3 py-6 text-center text-xs text-muted-foreground">
+            暂无可选择的问题
+          </div>
+        )}
+      </div>
       {generationCatalogIssue && (
-        <div role="alert" className="mt-2 text-xs text-amber-300/90">
+        <div role="alert" className="mt-2 shrink-0 text-xs text-amber-300/90">
           {t(`freezone.chat.generationParams.catalog.${generationCatalogIssue}`)}
         </div>
       )}
-      <div className="mt-2.5 flex flex-wrap items-center justify-between gap-2">
+      <div className="mt-2.5 flex shrink-0 flex-wrap items-center justify-between gap-2 border-t border-white/[0.08] pt-2.5">
         <div className="text-xs text-muted-foreground/80">
           已选择 {activeSelectedCount} 项 · {answeredCount} / {selectableQuestions.length}
         </div>
