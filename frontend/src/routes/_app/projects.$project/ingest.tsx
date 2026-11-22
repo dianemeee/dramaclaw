@@ -201,8 +201,8 @@ type IngestSettingsValues = {
   spine_template: SpineTemplate;
   visual_style: string;
   narration_style: string;
-  content_language: string;
-  subtitle_language: string;
+  content_language: "id" | "en" | "zh";
+  subtitle_language: "id" | "en" | "zh" | "none";
   ethnicity: string;
 };
 
@@ -211,7 +211,7 @@ const DEFAULT_VISUAL_STYLE = VISUAL_STYLE_OPTIONS[0].value;
 const DEFAULT_NARRATION_STYLE = NARRATION_STYLE_OPTIONS[0].value;
 // Narration defaults to Indonesian (the user's content language), not
 // to the UI language.
-const DEFAULT_CONTENT_LANGUAGE = "id";
+const DEFAULT_CONTENT_LANGUAGE: "id" | "en" | "zh" = "id";
 const DEFAULT_ETHNICITY = ETHNICITY_OPTIONS[0].value;
 const LEGACY_DEFAULT_VISUAL_STYLE = "post_apocalyptic";
 const LEGACY_DEFAULT_NARRATION_STYLE = "third_person";
