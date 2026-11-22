@@ -64,6 +64,7 @@ ADVANCED_TEXT_MODEL_BY_ENV = {
     "EPISODE_PROP_PLANNER_MODEL": "DC-episode-prop-planner-LLM",
     "FREEZONE_TRANSLATION_MODEL": "DC-freezone-translator-LLM",
     "FREEZONE_TEXT_WRITER_MODEL": "DC-freezone-text-writer-LLM",
+    "ARTICLE_ANALYSIS_MODEL": "DC-freezone-text-writer-LLM",
     "FREEZONE_STORY_SCRIPT_MODEL": "DC-freezone-story-script-writer-LLM",
     "FREEZONE_RECIPE_COMPILER_MODEL": "DC-freezone-recipe-compiler-LLM",
     "FREEZONE_VISION_MODEL": "DC-freezone-vision-LLM",
