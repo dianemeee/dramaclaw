@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Elastic-2.0
 // Copyright (c) 2026 ClaymoreLab
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ChevronDown, ChevronRight, Clapperboard, Loader2, Send } from "lucide-react";
 import { toast } from "sonner";
 import { awaitTaskCompletion } from "@/api/tasks";
@@ -9,6 +9,10 @@ import {
   type VideoReferenceMode,
 } from "@/api/ops";
 import { cn } from "@/lib/utils";
+import {
+  buildVideoDirectorMessage,
+  type ReferenceSendPart,
+} from "@/features/superchat/referenceSend";
 
 /**
  * Optional video-reference analysis, shown above the Xia Director composer
@@ -51,11 +55,15 @@ export interface VideoReferencePanelProps {
   projectId: string | null;
   /** Fill the director composer with the analysis (user presses Send). */
   onSendToDirector: (text: string) => void;
+  /** Report the current analysis (or null) so SuperChatPanel can offer
+      one combined "Send both" button together with the article panel. */
+  onResultChange?: (part: ReferenceSendPart | null) => void;
 }
 
 export function VideoReferencePanel({
   projectId,
   onSendToDirector,
+  onResultChange,
 }: VideoReferencePanelProps) {
   const [open, setOpen] = useState(false);
   const [videoUrl, setVideoUrl] = useState("");
@@ -79,6 +87,29 @@ export function VideoReferencePanel({
       return next;
     });
   };
+
+  // Lift the current analysis up so SuperChatPanel can combine it with
+  // the article analysis into one send. Emits null while no result exists
+  // (before Analyse, or while a new analysis is running).
+  useEffect(() => {
+    if (!onResultChange) return;
+    if (!result) {
+      onResultChange(null);
+      return;
+    }
+    onResultChange({
+      kind: "video",
+      title: result.title,
+      mode,
+      model: result.model,
+      analysis: result.analysis,
+      checkedLabels: ASPECTS.filter((aspect) => checked.has(aspect.key)).map(
+        (aspect) => aspect.label,
+      ),
+      allLabels: ASPECTS.map((aspect) => aspect.label),
+      extraNotes,
+    });
+  }, [result, mode, checked, extraNotes, onResultChange]);
 
   const handleAnalyze = async () => {
     const url = videoUrl.trim();
@@ -136,11 +167,23 @@ export function VideoReferencePanel({
 
   const handleSendToDirector = () => {
     if (!result) return;
-    const header =
-      `Video reference analysis (${mode}` +
-      (result.title ? ` — ${result.title}` : "") +
-      `, via ${result.model || "video model"}):\n\n`;
-    onSendToDirector(`${header}${result.analysis}`);
+    // Hardened: the video is STYLE reference only — borrow only the
+    // checklist aspects actually ticked, never the video's story or plot.
+    // The user never has to explain that split by hand.
+    onSendToDirector(
+      buildVideoDirectorMessage({
+        kind: "video",
+        title: result.title,
+        mode,
+        model: result.model,
+        analysis: result.analysis,
+        checkedLabels: ASPECTS.filter((aspect) =>
+          checked.has(aspect.key),
+        ).map((aspect) => aspect.label),
+        allLabels: ASPECTS.map((aspect) => aspect.label),
+        extraNotes,
+      }),
+    );
   };
 
   return (

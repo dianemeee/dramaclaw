@@ -33,6 +33,7 @@ import {
   PinOff,
   RefreshCw,
   Search,
+  Send,
   ShieldAlert,
   SlidersHorizontal,
   Wrench,
@@ -144,6 +145,11 @@ import {
 import { ComposerWaitingStatus } from "@/features/superchat/composer-waiting-status";
 import { VideoReferencePanel } from "@/features/superchat/VideoReferencePanel";
 import { ArticleReferencePanel } from "@/features/superchat/ArticleReferencePanel";
+import {
+  buildCombinedDirectorMessage,
+  combinedSendButtonLabel,
+  type ReferenceSendPart,
+} from "@/features/superchat/referenceSend";
 import { ChatTaskStatusBar } from "@/features/superchat/chat-task-status-bar";
 import { ChatHistoryNotice } from "@/features/superchat/chat-history-notice";
 import { calculateTimelineContextDelta } from "@/features/superchat/timeline-scroll";
@@ -12713,6 +12719,25 @@ export function SuperChatPanel({
   const isFreezoneLayout = variant === "freezone";
   const displayName = useAuthStore((s) => s.displayName);
   const [draft, setDraft] = useState("");
+  // Latest article + video reference analyses, lifted up from the two
+  // panels so one combined "Send both" button can compose a single
+  // message: story from the article, style only from the video. Either
+  // panel may produce its result first; the button appears only once
+  // both exist. Stable callbacks: the panels re-emit on every result /
+  // mode / checklist / notes change, and an inline callback identity
+  // would re-run their effects on every render.
+  const [articleReferencePart, setArticleReferencePart] =
+    useState<ReferenceSendPart | null>(null);
+  const [videoReferencePart, setVideoReferencePart] =
+    useState<ReferenceSendPart | null>(null);
+  const handleArticleReferenceChange = useCallback(
+    (part: ReferenceSendPart | null) => setArticleReferencePart(part),
+    [],
+  );
+  const handleVideoReferenceChange = useCallback(
+    (part: ReferenceSendPart | null) => setVideoReferencePart(part),
+    [],
+  );
   const [selectedHtmlReference, setSelectedHtmlReference] = useState<HtmlArtifactReference | null>(null);
   useEffect(() => {
     setSelectedHtmlReference(null);
@@ -16279,6 +16304,7 @@ export function SuperChatPanel({
               setDraft(text);
               draftInputRef.current?.focus();
             }}
+            onResultChange={handleVideoReferenceChange}
           />
           {/* Article reference analysis: optional, both Freezone and
               Series. Same pattern as the video panel: the backend fetches
@@ -16291,7 +16317,33 @@ export function SuperChatPanel({
               setDraft(text);
               draftInputRef.current?.focus();
             }}
+            onResultChange={handleArticleReferenceChange}
           />
+          {/* One combined send: shown only once BOTH an article analysis
+              and a video analysis exist (either order). One click fills
+              the composer with a single message — story from the article,
+              style only from the video — so the user never has to explain
+              the split herself. */}
+          {articleReferencePart && videoReferencePart ? (
+            <div className="mx-auto w-full max-w-[760px]">
+              <button
+                type="button"
+                onClick={() => {
+                  setDraft(
+                    buildCombinedDirectorMessage(
+                      articleReferencePart,
+                      videoReferencePart,
+                    ),
+                  );
+                  draftInputRef.current?.focus();
+                }}
+                className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl border border-primary/50 bg-primary/15 px-3 py-2 text-xs font-medium text-primary transition hover:bg-primary/25"
+              >
+                <Send className="size-3.5" />
+                {combinedSendButtonLabel()}
+              </button>
+            </div>
+          ) : null}
           <div
             ref={composerShellRef}
             className={cn(

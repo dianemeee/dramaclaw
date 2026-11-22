@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Elastic-2.0
 // Copyright (c) 2026 ClaymoreLab
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ChevronDown, ChevronRight, Loader2, Newspaper, Send } from "lucide-react";
 import { toast } from "sonner";
 import { awaitTaskCompletion } from "@/api/tasks";
@@ -9,6 +9,10 @@ import {
   type ArticleReferenceMode,
 } from "@/api/ops";
 import { cn } from "@/lib/utils";
+import {
+  buildArticleDirectorMessage,
+  type ReferenceSendPart,
+} from "@/features/superchat/referenceSend";
 
 /**
  * Optional article-reference analysis, shown above the Xia Director composer
@@ -56,11 +60,15 @@ export interface ArticleReferencePanelProps {
   projectId: string | null;
   /** Fill the director composer with the analysis (user presses Send). */
   onSendToDirector: (text: string) => void;
+  /** Report the current analysis (or null) so SuperChatPanel can offer
+      one combined "Send both" button together with the video panel. */
+  onResultChange?: (part: ReferenceSendPart | null) => void;
 }
 
 export function ArticleReferencePanel({
   projectId,
   onSendToDirector,
+  onResultChange,
 }: ArticleReferencePanelProps) {
   const [open, setOpen] = useState(false);
   const [articleUrl, setArticleUrl] = useState("");
@@ -85,6 +93,29 @@ export function ArticleReferencePanel({
       return next;
     });
   };
+
+  // Lift the current analysis up so SuperChatPanel can combine it with
+  // the video analysis into one send. Emits null while no result exists
+  // (before Analyse, or while a new analysis is running).
+  useEffect(() => {
+    if (!onResultChange) return;
+    if (!result) {
+      onResultChange(null);
+      return;
+    }
+    onResultChange({
+      kind: "article",
+      title: result.title,
+      mode,
+      model: result.model,
+      analysis: result.analysis,
+      checkedLabels: ASPECTS.filter((aspect) => checked.has(aspect.key)).map(
+        (aspect) => aspect.label,
+      ),
+      allLabels: ASPECTS.map((aspect) => aspect.label),
+      extraNotes,
+    });
+  }, [result, mode, checked, extraNotes, onResultChange]);
 
   const handleAnalyze = async () => {
     const url = articleUrl.trim();
@@ -144,11 +175,23 @@ export function ArticleReferencePanel({
 
   const handleSendToDirector = () => {
     if (!result) return;
-    const header =
-      `Article reference analysis (${mode}` +
-      (result.title ? ` — ${result.title}` : "") +
-      `, via ${result.model || "text model"}):\n\n`;
-    onSendToDirector(`${header}${result.analysis}`);
+    // Hardened: the article analysis is always labelled as the STORY
+    // source, so the director develops the story from it without the
+    // user having to say so by hand.
+    onSendToDirector(
+      buildArticleDirectorMessage({
+        kind: "article",
+        title: result.title,
+        mode,
+        model: result.model,
+        analysis: result.analysis,
+        checkedLabels: ASPECTS.filter((aspect) =>
+          checked.has(aspect.key),
+        ).map((aspect) => aspect.label),
+        allLabels: ASPECTS.map((aspect) => aspect.label),
+        extraNotes,
+      }),
+    );
   };
 
   return (
