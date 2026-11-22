@@ -164,7 +164,7 @@ export function VideoReferencePanel({
           </span>
         </button>
         {open ? (
-          <div className="space-y-3 border-t border-white/10 px-3 py-3">
+          <div className="ui-scrollbar max-h-[45vh] space-y-3 overflow-y-auto overscroll-contain border-t border-white/10 px-3 py-3">
             <label className="block space-y-1 text-xs">
               <span className="font-medium text-foreground/90">
                 Social video link
@@ -269,7 +269,7 @@ export function VideoReferencePanel({
                 {result.fallback ? (
                   <p className="text-[11px] text-amber-400">{result.fallback}</p>
                 ) : null}
-                <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground/90">
+                <p className="ui-scrollbar max-h-[24vh] overflow-y-auto whitespace-pre-wrap pr-1 text-sm leading-relaxed text-foreground/90">
                   {result.analysis}
                 </p>
                 <button
