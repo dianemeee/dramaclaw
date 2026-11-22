@@ -660,6 +660,10 @@ async def test_freezone_audio_preset_speech_does_not_require_reference_voice(
         # Previously generated workflows may still carry this retired default.
         preset_model="qwen3-tts-flash",
         preset_voice="Serena",
+        # Preset voices follow the project content_language: the default
+        # voice ("Serena") resolves to the per-language voice, so Chinese
+        # narration needs an explicit Chinese project language here.
+        language="zh",
         egress_context=local_egress_context,
     )
 

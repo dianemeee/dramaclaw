@@ -92,6 +92,8 @@ class ProjectUpdate(BaseModel):
     aspect_ratio: Optional[Literal["2:3", "9:16", "16:9"]] = None
     visual_style: Optional[str] = None
     narration_style: Optional[str] = None
+    content_language: Optional[Literal["id", "en", "zh"]] = None
+    subtitle_language: Optional[Literal["id", "en", "zh", "none"]] = None
     ethnicity: Optional[str] = None
     rhythm: Optional[str] = None
     tts_provider: Optional[str] = None
@@ -2154,8 +2156,8 @@ class FreezoneTextGenerateRequest(BaseModel):
 
 class FreezoneTextTranslateData(BaseModel):
     translated_text: str
-    source_language: Literal["zh", "en"]
-    target_language: Literal["zh", "en"]
+    source_language: Literal["zh", "en", "id"]
+    target_language: Literal["zh", "en", "id"]
     node_type: Literal["generic", "image", "video", "audio", "text"]
 
 

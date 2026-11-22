@@ -157,6 +157,10 @@ async def _run_script_writer_scoped(
 
         script = await workflow.run(
             episode_num=episode,
+            # The project's content_language drives the script / narration
+            # language; the workflow falls back to detecting it from the
+            # source text when the setting is absent or invalid.
+            output_language=merged_config.get("content_language"),
             on_progress=update_progress,
             on_log=lambda message: manager.update_progress_for_project(
                 ctx,

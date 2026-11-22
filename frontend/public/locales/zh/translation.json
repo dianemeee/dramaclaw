@@ -3035,6 +3035,19 @@
     "advancedSettings": "高级设置",
     "visualStyle": "视觉风格",
     "narrationStyle": "解说风格",
+    "contentLanguage": "旁白语言",
+    "subtitleLanguage": "字幕语言",
+    "contentLanguages": {
+      "id": "印度尼西亚语",
+      "en": "英语",
+      "zh": "普通话"
+    },
+    "subtitleLanguages": {
+      "id": "印度尼西亚语",
+      "en": "英语",
+      "zh": "普通话",
+      "none": "关闭"
+    },
     "ethnicity": "默认未指定人群",
     "rhythm": "节奏",
     "ttsProvider": "TTS 服务",

@@ -2918,6 +2918,19 @@
     "advancedSettings": "Cài đặt nâng cao",
     "visualStyle": "Phong cách hình ảnh",
     "narrationStyle": "Ngôi kể",
+    "contentLanguage": "Ngôn ngữ lời thoại",
+    "subtitleLanguage": "Ngôn ngữ phụ đề",
+    "contentLanguages": {
+      "id": "Tiếng Indonesia",
+      "en": "Tiếng Anh",
+      "zh": "Tiếng Quan Thoại"
+    },
+    "subtitleLanguages": {
+      "id": "Tiếng Indonesia",
+      "en": "Tiếng Anh",
+      "zh": "Tiếng Quan Thoại",
+      "none": "Tắt"
+    },
     "ethnicity": "Sắc tộc mặc định cho nhân vật không xác định",
     "rhythm": "Nhịp phim",
     "ttsProvider": "Nhà cung cấp TTS",

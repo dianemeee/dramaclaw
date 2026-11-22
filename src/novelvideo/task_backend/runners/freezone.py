@@ -2167,6 +2167,7 @@ async def _run_freezone_story_script_async(
             source_text=source_text,
             prompt=prompt,
             model=str(payload.get("model") or ""),
+            language=payload.get("language"),
             character_refs=character_refs,
         )
 
@@ -2393,6 +2394,9 @@ async def _run_freezone_audio_speech_async(
             speech_mode=str(payload.get("speech_mode") or "clone"),
             preset_model=str(payload.get("preset_model") or "edge-tts"),
             preset_voice=str(payload.get("preset_voice") or "Serena"),
+            # Project narration language, stamped by the route; when
+            # absent the generator falls back to the project config.
+            language=payload.get("language"),
             projection=projection,
         )
     finally:

@@ -3035,6 +3035,19 @@
     "advancedSettings": "Definições avançadas",
     "visualStyle": "Estilo visual",
     "narrationStyle": "Estilo de narração",
+    "contentLanguage": "Idioma da narração",
+    "subtitleLanguage": "Idioma das legendas",
+    "contentLanguages": {
+      "id": "Indonésio",
+      "en": "Inglês",
+      "zh": "Mandarim"
+    },
+    "subtitleLanguages": {
+      "id": "Indonésio",
+      "en": "Inglês",
+      "zh": "Mandarim",
+      "none": "Desativado"
+    },
     "ethnicity": "Pessoas não especificadas por predefinição",
     "rhythm": "Ritmo",
     "ttsProvider": "Fornecedor de TTS",

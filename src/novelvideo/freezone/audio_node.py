@@ -54,7 +54,32 @@ LEGACY_PRESET_TTS_MODELS = {"qwen3-tts-flash", "LingShan-TTS-2"}
 EDGE_PRESET_VOICE_ALIASES = {
     "Serena": "zh-CN-XiaoxiaoNeural",
 }
+# Default preset (EdgeTTS) voice per narration language. The "Serena"
+# alias above is the historical Chinese default; when the narration
+# language is Indonesian or English the default voice follows the
+# language instead. CosyVoice is deliberately NOT in this map: its
+# v3-plus system voices support Chinese and English only, so it must
+# never be the Indonesian path.
+EDGE_PRESET_VOICE_BY_LANGUAGE = {
+    "id": "id-ID-GadisNeural",
+    "en": "en-US-AriaNeural",
+    "zh": "zh-CN-XiaoxiaoNeural",
+}
 VOICE_FILE_UNREADABLE_MESSAGE = "声线文件无法读取，请重新选择或检查文件是否完整"
+
+
+def _resolve_preset_voice(language: str, voice_name: str) -> str:
+    """Resolve a preset EdgeTTS voice for a narration language.
+
+    The default voice (``"Serena"``) resolves to the per-language
+    default voice, so Indonesian narration speaks with an Indonesian
+    voice. Any other voice name — an explicit user choice, or a full
+    voice id such as ``zh-CN-XiaoxiaoNeural`` — is honoured verbatim.
+    """
+    voice_name = (voice_name or "").strip() or "Serena"
+    if voice_name == "Serena":
+        return EDGE_PRESET_VOICE_BY_LANGUAGE.get(language, "zh-CN-XiaoxiaoNeural")
+    return EDGE_PRESET_VOICE_ALIASES.get(voice_name, voice_name)
 
 
 @dataclass
@@ -666,10 +691,16 @@ async def generate_freezone_audio_speech(
     speech_mode: str = "clone",
     preset_model: str = DEFAULT_PRESET_TTS_MODEL,
     preset_voice: str = "Serena",
+    language: str | None = None,
     projection: Any = None,
     egress_context: TrustedEgressContext | None = None,
 ) -> FreezoneAudioSpeechResult:
     """Generate speech with either a zero-config preset or a cloned reference voice.
+
+    ``language`` is the project's content_language (id / en / zh). When
+    omitted it is read from the project config, falling back to the
+    project default (``"id"``). It selects the preset voice for
+    ``speech_mode="preset"`` and the clone-fallback voice below.
 
     ``projection`` is the payload projection pinned when the task was submitted
     (``task_backend.projection.read_projection``). When it is supplied nothing
@@ -679,6 +710,17 @@ async def generate_freezone_audio_speech(
     clean_text = str(text or "").strip()
     if not clean_text:
         raise ValueError("text is required")
+
+    from novelvideo.utils.source_language import resolve_content_language
+
+    resolved_language = resolve_content_language(language)
+    if resolved_language is None:
+        try:
+            from novelvideo.project_config import load_content_language
+
+            resolved_language = load_content_language(username, project)
+        except Exception:
+            resolved_language = "id"
 
     if egress_context is None:
         egress_context = ambient_organization_egress_context()
@@ -694,7 +736,7 @@ async def generate_freezone_audio_speech(
             await _write_edge_tts_speech(
                 output_path=output_path,
                 input_text=clean_text,
-                voice=EDGE_PRESET_VOICE_ALIASES.get(voice_name, voice_name),
+                voice=_resolve_preset_voice(resolved_language, voice_name),
                 egress_context=egress_context,
             )
         else:
@@ -741,18 +783,51 @@ async def generate_freezone_audio_speech(
             provider="newapi",
             egress_context=egress_context,
         )
-    result = await generator.generate(
-        prompt=clean_text,
-        audio_url=build_reference_audio_url(selected_voice.audio_path),
-        output_path=output_path,
-        emotion_prompt=str(emotion_prompt or "").strip()
-        or narration_style_prompt(narration_style),
-    )
-    if not result.success:
-        raise with_upstream_status(
-            RuntimeError(result.error or "IndexTTS2 generation failed"),
-            result,
+    clone_error: Exception | None = None
+    try:
+        result = await generator.generate(
+            prompt=clean_text,
+            audio_url=build_reference_audio_url(selected_voice.audio_path),
+            output_path=output_path,
+            emotion_prompt=str(emotion_prompt or "").strip()
+            or narration_style_prompt(narration_style),
         )
+    except Exception as exc:  # noqa: BLE001 - clone failure falls back below
+        result = None
+        clone_error = exc
+    if result is None or not result.success:
+        # IndexTTS2 voice cloning is unproven for non-Chinese text: when
+        # the narration language is Indonesian or English and the clone
+        # fails, fall back to the free EdgeTTS preset voice for that
+        # language instead of failing the node. A live Indonesian clone
+        # test is still needed to know whether the fallback is ever hit.
+        if resolved_language in {"id", "en"}:
+            fallback_voice = EDGE_PRESET_VOICE_BY_LANGUAGE[resolved_language]
+            try:
+                await _write_edge_tts_speech(
+                    output_path=output_path,
+                    input_text=clean_text,
+                    voice=fallback_voice,
+                    egress_context=egress_context,
+                )
+            except Exception:
+                pass
+            else:
+                if output_path.exists() and output_path.stat().st_size > 0:
+                    return FreezoneAudioSpeechResult(
+                        audio_path=output_path,
+                        duration_ms=_duration_ms(output_path),
+                        mime_type="audio/mpeg",
+                        model=DEFAULT_PRESET_TTS_MODEL,
+                        voice_source=f"preset-fallback:{fallback_voice}",
+                        voice_sha256="",
+                    )
+        if result is not None:
+            raise with_upstream_status(
+                RuntimeError(result.error or "IndexTTS2 generation failed"),
+                result,
+            )
+        raise clone_error or RuntimeError("IndexTTS2 generation failed")
 
     duration_ms = int((result.duration_seconds or 0) * 1000) or _duration_ms(
         output_path

@@ -1397,12 +1397,24 @@ def _standard_intent_from_match(
     inputs: Any,
     match: dict[str, Any],
     assumptions: Any = None,
+    content_language: str | None = None,
+    subtitle_language: str | None = None,
 ) -> dict[str, Any]:
     return {
         "schema_version": WORKFLOW_INTENT_SCHEMA_VERSION,
         "skill_id": skill_id,
         "user_goal": user_goal,
         "inputs": dict(inputs) if isinstance(inputs, dict) else {},
+        **(
+            {"content_language": content_language}
+            if content_language
+            else {}
+        ),
+        **(
+            {"subtitle_language": subtitle_language}
+            if subtitle_language
+            else {}
+        ),
         **(
             {"assumptions": [str(item) for item in assumptions]}
             if isinstance(assumptions, list) and assumptions
@@ -1453,6 +1465,8 @@ def _compile_isomorphic_plan_through_template(
     inputs: Any,
     match: dict[str, Any],
     assumptions: Any = None,
+    content_language: str | None = None,
+    subtitle_language: str | None = None,
 ) -> tuple[dict[str, Any] | None, dict[str, Any]]:
     """Compile the recovered standard intent; on failure return the reason instead."""
     intent = _standard_intent_from_match(
@@ -1461,6 +1475,8 @@ def _compile_isomorphic_plan_through_template(
         inputs=inputs,
         match=match,
         assumptions=assumptions,
+        content_language=content_language,
+        subtitle_language=subtitle_language,
     )
     compiled = compile_workflow_intent(intent, _include_unit_facts=False)
     if not compiled.get("ok"):
@@ -2045,6 +2061,14 @@ def compile_workflow_intent(
     # carry it in the intent; otherwise the DRAMACLAW_UI_LANGUAGE env
     # var (via resolve_director_language in _standard_skill_items).
     intent_language = _text(intent.get("language")) or _text(intent.get("ui_language")) or None
+    # Content language for narration / audio / subtitles: the project's
+    # content_language when stamped onto the intent, else the intent / UI
+    # language. Display titles keep following intent_language (UI); the
+    # stamp is carried on the compiled intent so the standard planner
+    # and the node builder below both see the same values.
+    content_language, subtitle_language = _resolve_intent_content_languages(intent)
+    compiled_intent["content_language"] = content_language
+    compiled_intent["subtitle_language"] = subtitle_language
     requested_mode = (
         _text((intent.get("planner") or {}).get("mode"))
         if isinstance(intent.get("planner"), dict)
@@ -2072,6 +2096,8 @@ def compile_workflow_intent(
                 resolved_inputs=input_contract["resolved"],
                 include_unit_facts=_include_unit_facts,
                 language=intent_language,
+                content_language=content_language,
+                subtitle_language=subtitle_language,
             )
         )
         if planner_error is not None:
@@ -2100,6 +2126,8 @@ def compile_workflow_intent(
                     inputs=intent.get("inputs"),
                     match=match,
                     assumptions=intent.get("assumptions"),
+                    content_language=content_language,
+                    subtitle_language=subtitle_language,
                 )
                 if rerouted is not None:
                     mismatch, mapping = _template_round_trip_reason(
@@ -2225,6 +2253,7 @@ def _standard_skill_items(
     include_unit_facts: bool = True,
     video_dependency: str = "independent",
     language: str | None = None,
+    content_language: str | None = None,
 ) -> list[dict[str, Any]]:
     items: list[dict[str, Any]] = []
     # Workflow item titles are shown verbatim in the Workflow progress
@@ -2232,6 +2261,10 @@ def _standard_skill_items(
     # else the DRAMACLAW_UI_LANGUAGE env var, else zh (upstream).
     lang = resolve_director_language(language)
     titles = workflow_item_titles(lang)
+    # Background-music prompts are model input, so they follow the
+    # content language, not the UI language. The music itself is
+    # instrumental; only the prompt wording changes.
+    music_prompt = _background_music_prompt(user_goal, content_language)
     if skill_id == "ecommerce-ad":
         items.append(
             _planned_item(
@@ -2515,7 +2548,7 @@ def _standard_skill_items(
             _planned_item(
                 item_id="background_music",
                 title=titles["background_music"],
-                prompt=f"{user_goal}，生成与情绪节奏匹配的纯音乐",
+                prompt=music_prompt,
                 recipe_id="drama-background-music",
                 depends_on=["outline"],
                 stage="audio",
@@ -2523,6 +2556,19 @@ def _standard_skill_items(
             )
         )
     return items
+
+
+def _background_music_prompt(user_goal: str, content_language: str | None) -> str:
+    """Background-music prompt in the content language (music is instrumental)."""
+    from novelvideo.utils.source_language import resolve_content_language
+
+    language = resolve_content_language(content_language) or "zh"
+    templates = {
+        "id": "{goal}, buat musik instrumental yang sesuai dengan suasana dan ritme",
+        "en": "{goal}, generate instrumental music matching the mood and rhythm",
+        "zh": "{goal}，生成与情绪节奏匹配的纯音乐",
+    }
+    return templates[language].format(goal=user_goal)
 
 
 def _standard_planner_units(
@@ -2680,7 +2726,16 @@ def _expand_standard_skill_intent(
     resolved_inputs: dict[str, Any],
     include_unit_facts: bool = True,
     language: str | None = None,
+    content_language: str | None = None,
+    subtitle_language: str | None = None,
 ) -> tuple[dict[str, Any], dict[str, Any] | None, dict[str, Any] | None]:
+    """Expand a deterministic standard-planner intent.
+
+    ``language`` is the display (UI) language for node titles.
+    ``content_language`` / ``subtitle_language`` are the narration /
+    audio / subtitle languages (project setting when stamped onto the
+    intent); they fall back to the display language mapping when absent.
+    """
     profile = _DETERMINISTIC_SKILL_PLANNERS.get(skill_id)
     if profile is None:
         return (
@@ -2835,6 +2890,17 @@ def _expand_standard_skill_intent(
         user_goal=user_goal,
         resolved_inputs=resolved_inputs,
     )
+    # Narration / audio language for the validation hints and prompts
+    # below. Explicit arguments win; the intent stamp is next; otherwise
+    # the display-language mapping applies.
+    effective_content_language, effective_subtitle_language = (
+        _resolve_intent_content_languages(
+            intent,
+            content_language=content_language,
+            subtitle_language=subtitle_language,
+        )
+    )
+    content_language_display = _CONTENT_LANGUAGE_DISPLAY[effective_content_language]
     if include_audio:
         for index, unit in enumerate(units):
             narration = _text(unit.get("narration"))
@@ -2856,8 +2922,9 @@ def _expand_standard_skill_intent(
                         path=f"planner.units.{index}.narration",
                         hint=(
                             "Add narration to each unit: the exact sentence(s) the "
-                            "voice-over should speak aloud for that unit, in the "
-                            "user's language. If you want one overall voice-over "
+                            "voice-over should speak aloud for that unit, in "
+                            f"{content_language_display} (the project's narration "
+                            "language). If you want one overall voice-over "
                             "line instead of per-unit narration, drop the planner "
                             "units and plan explicit items with a single speech "
                             "audio item carrying that line. If the user did not "
@@ -2878,7 +2945,9 @@ def _expand_standard_skill_intent(
                         path=f"planner.units.{index}.narration",
                         hint=(
                             "Write the exact sentence(s) the voice-over should speak "
-                            "aloud for this unit, in the user's language. Placeholders "
+                            "aloud for this unit, in "
+                            f"{content_language_display} (the project's narration "
+                            "language). Placeholders "
                             'like "第一段旁白" / "这是短剧的第二段解说" and unit titles '
                             'are rejected. Example: "深夜的便利店，只有他一个人。" '
                             "If include_audio was not requested by the user, set "
@@ -2901,6 +2970,7 @@ def _expand_standard_skill_intent(
         include_unit_facts=include_unit_facts,
         video_dependency=video_dependency,
         language=language,
+        content_language=effective_content_language,
     )
     # A deterministic standard workflow must also be executable without asking
     # the Agent to discover model ids. Keep the symbolic value in the plan; the
@@ -2926,6 +2996,11 @@ def _expand_standard_skill_intent(
         "items": items,
         "include_audio": include_audio,
         "include_compose": deliverable != "images",
+        # Carry the resolved narration / subtitle languages forward so the
+        # node builder sees them even when this expander is called without
+        # a pre-stamped intent.
+        "content_language": effective_content_language,
+        "subtitle_language": effective_subtitle_language,
     }
     metadata = {
         "mode": "deterministic_standard",
@@ -2956,6 +3031,9 @@ def _compile_dynamic_recipe_items_intent(
             "dynamic workflow intent must include at least one recipe-backed item",
             path="items",
         )
+    # Narration / subtitle languages for the nodes below: the intent's
+    # stamped project setting when present, else the intent / UI language.
+    content_language, subtitle_language = _resolve_intent_content_languages(intent)
     # Compose-node labels are shown verbatim in the Workflow card, so they
     # follow the UI language like the standard-planner titles do.
     compose_lang = resolve_director_language(
@@ -3154,6 +3232,8 @@ def _compile_dynamic_recipe_items_intent(
             user_goal=user_goal,
             resolved_inputs=resolved_inputs,
             recipe_pipeline=recipe_pipeline,
+            content_language=content_language,
+            subtitle_language=subtitle_language,
         )
         if use_native_social_ratios and recipe_id in _SOCIAL_IMAGE_NATIVE_RATIOS:
             node["data"]["aspectRatio"] = _SOCIAL_IMAGE_NATIVE_RATIOS[recipe_id]
@@ -3928,6 +4008,8 @@ def _intent_item_node(
     user_goal: str,
     resolved_inputs: dict[str, Any],
     recipe_pipeline: list[dict[str, Any]],
+    content_language: str = "zh",
+    subtitle_language: str | None = None,
 ) -> dict[str, Any]:
     label = (_text(item.get("title")) or _text(item.get("prompt")) or item_id)[:64]
     audio_kind = _intent_audio_kind(item, recipe) if node_type == "audioNode" else ""
@@ -4077,7 +4159,20 @@ def _intent_item_node(
             if voice_ref is not None:
                 data["voiceRef"] = dict(voice_ref)
             data["voiceAvailable"] = voice_ref is not None
-            data["languageType"] = "Chinese"
+            # Narration language for this speech node (project setting,
+            # stamped on the intent at workflow creation). This replaces
+            # the old hardcoded "Chinese": the runtime reads the project
+            # setting when the node executes, and this value is what the
+            # canvas / audio panel shows for the node.
+            from novelvideo.utils.source_language import resolve_content_language
+
+            resolved_content = resolve_content_language(content_language) or "zh"
+            data["languageType"] = _CONTENT_LANGUAGE_DISPLAY[resolved_content]
+            data["subtitleLanguage"] = (
+                subtitle_language
+                if subtitle_language in _VALID_SUBTITLE_LANGUAGES
+                else resolved_content
+            )
     if node_type == "htmlArtifactNode":
         data = {
             key: value for key, value in data.items()
@@ -5187,6 +5282,51 @@ def _safe_id(value: str) -> str:
 
 def _text(value: Any) -> str:
     return str(value).strip() if value is not None else ""
+
+
+# Content languages for generated narration / audio / subtitles. This is
+# deliberately separate from the UI language: the UI may be English while
+# the content is Indonesian. The server stamps the project's
+# content_language / subtitle_language onto the intent at workflow
+# creation (see _prepare_workflow_source); anything compiled without
+# that stamp falls back to the intent / UI language, as before.
+_CONTENT_LANGUAGE_DISPLAY = {
+    "id": "Indonesian",
+    "en": "English",
+    "zh": "Chinese",
+}
+_VALID_SUBTITLE_LANGUAGES = ("id", "en", "zh", "none")
+
+
+def _resolve_intent_content_languages(
+    intent: dict[str, Any],
+    *,
+    content_language: str | None = None,
+    subtitle_language: str | None = None,
+) -> tuple[str, str]:
+    """Resolve ``(content_language, subtitle_language)`` for an intent.
+
+    Priority: explicit argument, then the intent's stamped project
+    setting, then the intent / UI language mapped through the
+    director-language resolver. Subtitle language defaults to the
+    content language and may be ``"none"`` to disable subtitles.
+    """
+    from novelvideo.utils.source_language import resolve_content_language
+
+    content = resolve_content_language(content_language)
+    if content is None:
+        content = resolve_content_language(intent.get("content_language"))
+    if content is None:
+        content = resolve_director_language(
+            _text(intent.get("language")) or _text(intent.get("ui_language")) or None
+        )
+    subtitle = str(
+        subtitle_language if subtitle_language is not None
+        else intent.get("subtitle_language") or ""
+    ).strip().lower()
+    if subtitle not in _VALID_SUBTITLE_LANGUAGES:
+        subtitle = content
+    return content, subtitle
 
 
 def _error(message: str) -> dict[str, Any]:

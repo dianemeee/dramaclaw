@@ -460,6 +460,179 @@ def run_video_generation(
     )
 
 
+def _format_srt_timestamp(seconds: float) -> str:
+    """Format seconds as an SRT timestamp (HH:MM:SS,mmm)."""
+    total_ms = max(0, int(round(float(seconds) * 1000)))
+    hours, remainder = divmod(total_ms, 3_600_000)
+    minutes, remainder = divmod(remainder, 60_000)
+    secs, millis = divmod(remainder, 1000)
+    return f"{hours:02d}:{minutes:02d}:{secs:02d},{millis:03d}"
+
+
+def _write_srt_file(path: Path, segments: list[tuple[float, float, str]]) -> None:
+    """Write narration segments as an .srt subtitle file."""
+    lines: list[str] = []
+    index = 0
+    for start, end, text in segments:
+        clean = " ".join(str(text or "").split())
+        if not clean:
+            continue
+        index += 1
+        lines.append(str(index))
+        lines.append(f"{_format_srt_timestamp(start)} --> {_format_srt_timestamp(end)}")
+        lines.append(clean)
+        lines.append("")
+    path.write_text("\n".join(lines), encoding="utf-8")
+
+
+async def _translate_subtitle_segments(
+    segments: list[tuple[float, float, str]],
+    *,
+    source_language: str,
+    target_language: str,
+) -> list[tuple[float, float, str]]:
+    """Translate subtitle segments into the subtitle language.
+
+    A failed or empty translation for one segment falls back to the
+    original text for that segment, so one bad segment never fails the
+    whole compose.
+    """
+    from novelvideo.freezone.text_node import translate_freezone_text
+
+    translated: list[tuple[float, float, str]] = []
+    for start, end, text in segments:
+        try:
+            translated_text, _, _ = await translate_freezone_text(
+                text=text,
+                node_type="text",
+                target_language=target_language,  # type: ignore[arg-type]
+            )
+        except Exception:
+            translated_text = ""
+        translated.append((start, end, translated_text.strip() or text))
+    return translated
+
+
+def _run_async_safely(coro):
+    """Run ``coro`` from sync code, or return None when a loop is running.
+
+    Sync task runners execute in threads without a running event loop,
+    so ``asyncio.run`` works there (the same pattern run_core.py uses).
+    When a loop is already running the caller must use its sync fallback.
+    """
+    try:
+        asyncio.get_running_loop()
+    except RuntimeError:
+        return asyncio.run(coro)
+    logger.warning("subtitle.async_run_skipped_running_loop")
+    coro.close()
+    return None
+
+
+def _resolve_compose_languages(
+    payload: dict[str, Any], ctx: ProjectContext
+) -> tuple[str, str]:
+    """Resolve ``(content_language, subtitle_language)`` for a compose run.
+
+    Payload values (stamped by the compose route) win when valid;
+    otherwise the project config is read. Any failure falls back to the
+    project defaults (id / id).
+    """
+    from novelvideo.project_config import load_content_languages_from_state_dir
+    from novelvideo.utils.source_language import resolve_content_language
+
+    try:
+        cfg_content, cfg_subtitle = load_content_languages_from_state_dir(ctx.state_dir)
+    except Exception:
+        cfg_content, cfg_subtitle = "id", "id"
+    content = resolve_content_language(payload.get("content_language")) or cfg_content
+    subtitle = str(payload.get("subtitle_language") or "").strip().lower()
+    if subtitle not in {"id", "en", "zh", "none"}:
+        subtitle = cfg_subtitle
+    return content, subtitle
+
+
+def _burn_subtitles_into_final(
+    *,
+    concat_path: Path,
+    output_path: Path,
+    segments: list[tuple[float, float, str]],
+    content_language: str,
+    subtitle_language: str,
+    tmp_dir: Path,
+    run_checked,
+    check_cancel,
+) -> bool:
+    """Burn narration subtitles into the concatenated video.
+
+    Segments are translated into the subtitle language when it differs
+    from the narration language, written as .srt, and burned with
+    ``VideoComposer.add_subtitles``. Any failure (translation, burn)
+    leaves the plain concatenated video as the output instead of
+    failing the compose.
+    """
+    import shutil
+
+    try:
+        burn_segments = segments
+        if (
+            subtitle_language != content_language
+            and subtitle_language in {"zh", "en", "id"}
+        ):
+            translated = _run_async_safely(
+                _translate_subtitle_segments(
+                    segments,
+                    source_language=content_language,
+                    target_language=subtitle_language,
+                )
+            )
+            if translated is not None:
+                burn_segments = translated
+        srt_path = tmp_dir / "subtitles.srt"
+        _write_srt_file(srt_path, burn_segments)
+        from novelvideo.generators.video_composer import VideoComposer
+
+        burn_result = _run_async_safely(
+            VideoComposer().add_subtitles(
+                str(concat_path),
+                str(srt_path),
+                str(output_path),
+            )
+        )
+        if burn_result is not None and burn_result.success:
+            return True
+        logger.warning("compose.subtitles_burn_failed_fallback_inline")
+        # Inline ffmpeg fallback: the same subtitles filter the composer uses.
+        check_cancel()
+        fallback = run_checked(
+            [
+                "ffmpeg",
+                "-y",
+                "-i",
+                str(concat_path),
+                "-vf",
+                "subtitles="
+                f"{srt_path}:force_style='FontSize=24,PrimaryColour=&HFFFFFF,"
+                "OutlineColour=&H000000,Outline=2'",
+                "-c:a",
+                "copy",
+                str(output_path),
+            ],
+            default_timeout_seconds=30 * 60,
+        )
+        if fallback.returncode == 0:
+            return True
+        logger.warning(
+            "compose.subtitles_fallback_failed stderr=%s",
+            (fallback.stderr or "")[:500],
+        )
+    except Exception:
+        logger.warning("compose.subtitles_failed", exc_info=True)
+    # Last resort: the plain concat is still a valid final video.
+    shutil.copyfile(concat_path, output_path)
+    return False
+
+
 def run_compose_episode(
     envelope: dict[str, Any], ctx: ProjectContext
 ) -> dict[str, Any]:
@@ -474,6 +647,11 @@ def run_compose_episode(
     beats = list(payload.get("beats") or [])
     resolution = str(payload.get("resolution") or "720x1280")
     add_subtitles = bool(payload.get("add_subtitles"))
+    # Subtitles are burned only when the request asks for them AND the
+    # project subtitle language is set (anything but "none"). The
+    # subtitle language defaults to the narration language.
+    content_language, subtitle_language = _resolve_compose_languages(payload, ctx)
+    want_subtitles = add_subtitles and subtitle_language != "none"
     manager = get_task_manager()
     paths = PathResolver(output_dir, episode)
     final_dir = Path(output_dir) / "videos" / "episodes"
@@ -510,6 +688,9 @@ def run_compose_episode(
         target_width, target_height = 720, 1280
 
     video_clips: list[str] = []
+    subtitle_segments: list[tuple[float, float, str]] = []
+    subtitle_cursor = 0.0
+    subtitles_burned = False
     with tempfile.TemporaryDirectory() as tmp:
         tmp_dir = Path(tmp)
         for index, beat in enumerate(beats):
@@ -650,6 +831,19 @@ def run_compose_episode(
             check_cancel()
             if result.returncode == 0:
                 video_clips.append(str(clip_path))
+                # Subtitle timing follows the concatenated clips: every
+                # successful clip advances the cursor by its video
+                # duration, whether or not the beat has narration text.
+                narration = str(beat.get("narration_segment") or "").strip()
+                if narration:
+                    subtitle_segments.append(
+                        (
+                            subtitle_cursor,
+                            subtitle_cursor + video_duration,
+                            narration,
+                        )
+                    )
+                subtitle_cursor += video_duration
             else:
                 manager.update_progress_for_project(
                     ctx,
@@ -662,6 +856,13 @@ def run_compose_episode(
             raise RuntimeError("没有可用的视频片段")
 
         check_cancel()
+        # When subtitles are wanted, the concat lands in the temp dir
+        # first and a second pass burns the subtitles into the final
+        # file; otherwise the concat writes straight to the output path
+        # exactly as before.
+        concat_target = output_path
+        if want_subtitles and subtitle_segments:
+            concat_target = tmp_dir / "concat.mp4"
         cmd = ["ffmpeg", "-y"]
         for clip in video_clips:
             cmd.extend(["-i", clip])
@@ -700,7 +901,7 @@ def run_compose_episode(
                 "aac",
                 "-b:a",
                 "128k",
-                str(output_path),
+                str(concat_target),
             ]
         )
         result = run_checked(cmd, default_timeout_seconds=30 * 60)
@@ -708,9 +909,23 @@ def run_compose_episode(
         if result.returncode != 0:
             raise RuntimeError(f"拼接失败: {result.stderr[:500]}")
 
+        if concat_target != output_path:
+            subtitles_burned = _burn_subtitles_into_final(
+                concat_path=concat_target,
+                output_path=output_path,
+                segments=subtitle_segments,
+                content_language=content_language,
+                subtitle_language=subtitle_language,
+                tmp_dir=tmp_dir,
+                run_checked=run_checked,
+                check_cancel=check_cancel,
+            )
+
     return {
         "video_path": output_path.as_posix(),
         "add_subtitles_requested": add_subtitles,
+        "subtitle_language": subtitle_language,
+        "subtitles_burned": subtitles_burned,
     }
 
 

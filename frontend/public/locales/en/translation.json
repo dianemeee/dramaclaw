@@ -3035,6 +3035,19 @@
     "advancedSettings": "Advanced settings",
     "visualStyle": "Visual Style",
     "narrationStyle": "Narration Style",
+    "contentLanguage": "Narration Language",
+    "subtitleLanguage": "Subtitle Language",
+    "contentLanguages": {
+      "id": "Indonesian",
+      "en": "English",
+      "zh": "Mandarin"
+    },
+    "subtitleLanguages": {
+      "id": "Indonesian",
+      "en": "English",
+      "zh": "Mandarin",
+      "none": "Off"
+    },
     "ethnicity": "Default unspecified people",
     "rhythm": "Rhythm",
     "ttsProvider": "TTS Provider",

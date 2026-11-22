@@ -575,6 +575,23 @@ def _raise_project_context_required(task_type: str) -> None:
     )
 
 
+def _freezone_content_language(ctx: Any) -> str:
+    """Project narration language for a Freezone route (id / en / zh).
+
+    Read from the project config; any read failure falls back to the
+    project default (``"id"``) rather than failing the request.
+    """
+    try:
+        from novelvideo.project_config import load_content_language_from_state_dir
+
+        state_dir = getattr(ctx, "state_dir", None)
+        if state_dir:
+            return load_content_language_from_state_dir(state_dir)
+    except Exception:
+        logger.warning("freezone.content_language_fallback", exc_info=True)
+    return "id"
+
+
 def _handle_task_start_runtime_error(message: str, exc: RuntimeError) -> None:
     handle_task_start_runtime_error(logger, message, exc)
 
@@ -9387,6 +9404,7 @@ def _start_freezone_story_script_task(
     source_text: str,
     prompt: str,
     model: str,
+    language: str | None = None,
     canvas_id: str | None = None,
     node_id: str | None = None,
     character_refs: list[dict] | None = None,
@@ -9437,6 +9455,7 @@ def _start_freezone_story_script_task(
                     source_text=source_text,
                     prompt=prompt,
                     model=model,
+                    language=language,
                     character_refs=character_refs,
                 )
             bind_story_script_assets(data, character_refs=character_refs)
@@ -9565,6 +9584,9 @@ async def freezone_story_script_generate(
                     "source_text": source_text,
                     "prompt": body.prompt,
                     "model": body.model,
+                    # Story-script language: the project setting, resolved
+                    # server-side so the canvas never has to send it.
+                    "language": _freezone_content_language(ctx),
                     "canvas_id": body.canvas_id or "",
                     "node_id": body.node_id or "",
                     "billing": {
@@ -9592,6 +9614,7 @@ async def freezone_story_script_generate(
             source_text=source_text,
             prompt=body.prompt,
             model=body.model,
+            language=_freezone_content_language(ctx),
             canvas_id=body.canvas_id or None,
             node_id=body.node_id or None,
             character_refs=character_refs,
@@ -12636,6 +12659,10 @@ async def freezone_audio_speech(
                     "text": body.text,
                     "emotion_prompt": body.emotion_prompt,
                     "voice_ref": voice_ref_payload,
+                    # Narration language for this speech node: the project
+                    # setting, resolved server-side so the canvas never has
+                    # to send it (older clients send no language).
+                    "language": _freezone_content_language(ctx),
                     **(
                         {
                             "speech_mode": body.speech_mode,
@@ -16415,12 +16442,44 @@ async def _check_workflow_runtime(compiled: dict, *, project: str, user: dict) -
     return preflight
 
 
-async def _prepare_workflow_source(body: dict, user: dict) -> dict:
+async def _prepare_workflow_source(
+    body: dict, user: dict, *, state_dir: str | Path | None = None
+) -> dict:
     from novelvideo.freezone.workflow_transactions import (
         WorkflowOperationError,
         prepare_workflow_source,
     )
 
+    # Stamp the project's narration / subtitle languages onto the intent
+    # so compilation (node titles aside) follows the project setting,
+    # not the UI language. Skipped when the body already carries a
+    # pre-compiled plan: the server re-compiles the agent's intent to
+    # verify it, and stamping only the server side would make the two
+    # compilations differ and reject the draft.
+    if state_dir and isinstance(body.get("intent"), dict) and not isinstance(
+        body.get("compiled"), dict
+    ):
+        try:
+            from novelvideo.project_config import (
+                load_content_languages_from_state_dir,
+            )
+
+            content_language, subtitle_language = (
+                load_content_languages_from_state_dir(state_dir)
+            )
+            body = {
+                **body,
+                "intent": {
+                    **body["intent"],
+                    "content_language": content_language,
+                    "subtitle_language": subtitle_language,
+                },
+            }
+        except Exception:
+            logger.warning(
+                "workflow_draft.create.content_language_stamp_failed",
+                exc_info=True,
+            )
     try:
         return await asyncio.to_thread(
             prepare_workflow_source, body, username=str(user.get("username") or "")
@@ -16743,7 +16802,7 @@ async def create_canvas_workflow_draft(
             409,
             "workflow result has no server-observed model execution evidence",
         )
-    prepared = await _prepare_workflow_source(body, user)
+    prepared = await _prepare_workflow_source(body, user, state_dir=state_dir)
     validated = prepared["compiled"]
     has_story_targets = await _validate_workflow_draft_story_targets(
         validated, state_dir=state_dir, canvas_id=canvas_id,
@@ -17006,7 +17065,7 @@ async def patch_canvas_workflow_draft(
             raise HTTPException(400, str(exc)) from exc
         body = {**body, **prepared}
     else:
-        prepared = await _prepare_workflow_source(body, user)
+        prepared = await _prepare_workflow_source(body, user, state_dir=state_dir)
     validated = prepared["compiled"]
     await _validate_workflow_draft_story_targets(
         validated, state_dir=state_dir, canvas_id=canvas_id,

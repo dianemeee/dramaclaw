@@ -44,12 +44,12 @@ LEGACY_FREEZONE_STORY_SCRIPT_MODEL_IDS = {
 
 FREEZONE_TRANSLATION_SYSTEM_PROMPT = """# Freezone Prompt Translator
 
-You translate prompting text between Simplified Chinese and English for creative nodes.
+You translate prompting text between Simplified Chinese, English and Bahasa Indonesia for creative nodes.
 
 ## Goal
 - First determine the dominant natural language of the source text.
-- If the dominant natural language is English, translate natural-language content into Simplified Chinese.
-- If the dominant natural language is Simplified Chinese, translate natural-language content into English.
+- When a target language is given, translate natural-language content into that language.
+- When no target language is given, translate into the opposite language: English into Simplified Chinese, Simplified Chinese into English, Bahasa Indonesia into English.
 - Translate accurately while preserving prompting intent.
 - Keep the output concise, directly usable as a prompt.
 - Preserve cinematic, visual, audio, and motion terminology naturally.
@@ -66,7 +66,8 @@ You translate prompting text between Simplified Chinese and English for creative
 8. If source_language and target_language differ, copying the original prose is a failure.
 9. When translating English into Chinese, keep technical tokens intact but translate every English instruction sentence, rule sentence, heading, and description into Simplified Chinese.
 10. When translating Chinese into English, keep technical tokens intact but translate every Chinese instruction sentence, rule sentence, heading, and description into English.
-11. Return structured data matching the requested schema. Do not wrap with markdown.
+11. When translating into or out of Bahasa Indonesia, keep technical tokens intact but translate every instruction sentence, rule sentence, heading, and description into the target language.
+12. Return structured data matching the requested schema. Do not wrap with markdown.
 """
 
 FREEZONE_TEXT_WRITER_SYSTEM_PROMPT = """# Freezone AI Text Writer
@@ -212,10 +213,10 @@ class FreezoneTranslationResult(BaseModel):
     """Structured translation result produced by the LLM."""
 
     translated_text: str = Field(description="Translated prompt text.")
-    source_language: Literal["zh", "en"] = Field(
+    source_language: Literal["zh", "en", "id"] = Field(
         description="Dominant natural language detected from the source text."
     )
-    target_language: Literal["zh", "en"] = Field(
+    target_language: Literal["zh", "en", "id"] = Field(
         description="Opposite target language used for translation."
     )
 
@@ -393,23 +394,47 @@ def get_freezone_story_script_agent(
     return _story_script_agent
 
 
+_TRANSLATION_LANGUAGE_NAMES = {
+    "zh": "Simplified Chinese",
+    "en": "English",
+    "id": "Bahasa Indonesia",
+}
+
+
 def build_freezone_translation_task(
     *,
     text: str,
     node_type: Literal["generic", "image", "video", "audio", "text"],
+    target_language: Literal["zh", "en", "id"] | None = None,
 ) -> str:
-    """构建翻译任务。"""
+    """构建翻译任务。
+
+    With an explicit ``target_language`` the model translates into that
+    language; without one it keeps the historical opposite-language
+    behaviour (Chinese <-> English, Indonesian -> English).
+    """
     node_label = FREEZONE_NODE_TYPE_LABELS[node_type]
 
-    parts = [
-        f"Translate the following {node_label}.",
-        "You must decide whether the dominant natural language is Simplified Chinese or English.",
-        "If dominant language is English, translate into Simplified Chinese.",
-        "If dominant language is Simplified Chinese, translate into English.",
-        "Do not copy the original prose when translating between different languages.",
-        "Preserve IDs, file names, bracket tags, color codes, ratios, and model names exactly, but translate the surrounding natural-language instructions.",
-        "Keep it directly usable as a creative prompt.",
-    ]
+    if target_language in _TRANSLATION_LANGUAGE_NAMES:
+        target_name = _TRANSLATION_LANGUAGE_NAMES[target_language]
+        parts = [
+            f"Translate the following {node_label} into {target_name}.",
+            "First determine the dominant natural language of the source text.",
+            f"If the source is already {target_name}, return it unchanged.",
+            "Do not copy the original prose when translating between different languages.",
+            "Preserve IDs, file names, bracket tags, color codes, ratios, and model names exactly, but translate the surrounding natural-language instructions.",
+            "Keep it directly usable as a creative prompt.",
+        ]
+    else:
+        parts = [
+            f"Translate the following {node_label}.",
+            "You must decide whether the dominant natural language is Simplified Chinese or English.",
+            "If dominant language is English, translate into Simplified Chinese.",
+            "If dominant language is Simplified Chinese, translate into English.",
+            "Do not copy the original prose when translating between different languages.",
+            "Preserve IDs, file names, bracket tags, color codes, ratios, and model names exactly, but translate the surrounding natural-language instructions.",
+            "Keep it directly usable as a creative prompt.",
+        ]
     parts.append(f"Source text:\n{text.strip()}")
     return "\n\n".join(parts)
 
@@ -418,28 +443,44 @@ async def translate_freezone_text(
     *,
     text: str,
     node_type: Literal["generic", "image", "video", "audio", "text"] = "generic",
+    target_language: Literal["zh", "en", "id"] | None = None,
     egress_context: TrustedEgressContext | None = None,
-) -> tuple[str, Literal["zh", "en"], Literal["zh", "en"]]:
-    """执行 Freezone 中英互译。"""
+) -> tuple[str, Literal["zh", "en", "id"], Literal["zh", "en", "id"]]:
+    """执行 Freezone 翻译。
+
+    With an explicit ``target_language`` the text is translated into that
+    language (used for subtitles, where the subtitle language is a project
+    setting); without one the historical opposite-language behaviour is
+    kept (Chinese <-> English, Indonesian -> English).
+    """
     if not text or not text.strip():
-        return "", "zh", "en"
+        return "", "zh", target_language or "en"
 
     task = build_freezone_translation_task(
         text=text,
         node_type=node_type,
+        target_language=target_language,
     )
     from novelvideo.model_gateway_runtime import model_gateway_request_scope
 
     with model_gateway_request_scope(egress_context):
         response = await get_freezone_translation_agent().run(task)
     result = response.output
-    target_language: Literal["zh", "en"] = result.target_language
-    if target_language == result.source_language:
-        target_language = "zh" if result.source_language == "en" else "en"
+    if target_language in _TRANSLATION_LANGUAGE_NAMES:
+        # Explicit target: trust the requested target even if the model
+        # reports something else; same-language input is returned as-is.
+        return (
+            result.translated_text.strip(),
+            result.source_language,
+            target_language,
+        )
+    target: Literal["zh", "en", "id"] = result.target_language
+    if target == result.source_language:
+        target = "zh" if result.source_language == "en" else "en"
     return (
         result.translated_text.strip(),
         result.source_language,
-        target_language,
+        target,
     )
 
 
@@ -618,10 +659,16 @@ async def generate_freezone_story_script(
     source_text: str,
     prompt: str = "",
     model: str | None = None,
+    language: str | None = None,
     character_refs: Sequence[Mapping[str, Any]] | None = None,
     egress_context: TrustedEgressContext | None = None,
 ):
-    """执行故事脚本生成（文本 / 角色图模式）。"""
+    """执行故事脚本生成（文本 / 角色图模式）。
+
+    ``language`` is the project's content_language (id / en / zh); it
+    selects the story-script language rule. When omitted the agent falls
+    back to the UI language, as before.
+    """
     if not source_text or not source_text.strip():
         raise ValueError("source_text is required")
 
@@ -633,7 +680,7 @@ async def generate_freezone_story_script(
     from novelvideo.model_gateway_runtime import model_gateway_request_scope
 
     with model_gateway_request_scope(egress_context):
-        response = await get_freezone_story_script_agent(model).run(task)
+        response = await get_freezone_story_script_agent(model, language).run(task)
     return response.output
 
 

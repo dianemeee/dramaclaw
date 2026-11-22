@@ -96,6 +96,10 @@ const settingsSchema = z.object({
   spine_template: z.enum(["drama", "narrated"]).optional(),
   visual_style: z.string().optional(),
   narration_style: z.string().optional(),
+  // Narration / subtitle languages. Separate from the UI language:
+  // the UI may be English while the narration is Indonesian.
+  content_language: z.enum(["id", "en", "zh"]).optional(),
+  subtitle_language: z.enum(["id", "en", "zh", "none"]).optional(),
   ethnicity: z.string().optional(),
 });
 
@@ -167,24 +171,47 @@ const NARRATION_STYLE_OPTIONS: { value: string; labelKey: string }[] = [
   { value: "third_person", labelKey: "ingest.thirdPerson" },
 ];
 
+// Narration / audio language and subtitle language. Exactly three
+// languages (Indonesian / English / Mandarin); subtitles may also be
+// off ("none") and default to the narration language when unset.
+const CONTENT_LANGUAGE_OPTIONS: { value: string; labelKey: string }[] = [
+  { value: "id", labelKey: "ingest.contentLanguages.id" },
+  { value: "en", labelKey: "ingest.contentLanguages.en" },
+  { value: "zh", labelKey: "ingest.contentLanguages.zh" },
+];
+const SUBTITLE_LANGUAGE_OPTIONS: { value: string; labelKey: string }[] = [
+  ...CONTENT_LANGUAGE_OPTIONS.map((opt) => ({
+    value: opt.value,
+    labelKey: opt.labelKey.replace("contentLanguages", "subtitleLanguages"),
+  })),
+  { value: "none", labelKey: "ingest.subtitleLanguages.none" },
+];
+
 type SettingsForm = z.infer<typeof settingsSchema>;
 
 const INGEST_SETTING_FIELDS = [
   "spine_template",
   "visual_style",
   "narration_style",
+  "content_language",
+  "subtitle_language",
   "ethnicity",
 ] as const;
 type IngestSettingsValues = {
   spine_template: SpineTemplate;
   visual_style: string;
   narration_style: string;
+  content_language: string;
+  subtitle_language: string;
   ethnicity: string;
 };
 
 const DEFAULT_SPINE_TEMPLATE: SpineTemplate = SPINE_TEMPLATE_OPTIONS[0].value;
 const DEFAULT_VISUAL_STYLE = VISUAL_STYLE_OPTIONS[0].value;
 const DEFAULT_NARRATION_STYLE = NARRATION_STYLE_OPTIONS[0].value;
+// Narration defaults to Indonesian (the user's content language), not
+// to the UI language.
+const DEFAULT_CONTENT_LANGUAGE = "id";
 const DEFAULT_ETHNICITY = ETHNICITY_OPTIONS[0].value;
 const LEGACY_DEFAULT_VISUAL_STYLE = "post_apocalyptic";
 const LEGACY_DEFAULT_NARRATION_STYLE = "third_person";
@@ -206,6 +233,13 @@ function normalizeLegacyDefaults(
     narration_style: isLegacyDefault
       ? DEFAULT_NARRATION_STYLE
       : (config?.narration_style ?? DEFAULT_NARRATION_STYLE),
+    content_language:
+      config?.content_language ?? DEFAULT_CONTENT_LANGUAGE,
+    // Subtitle language defaults to the narration language when unset.
+    subtitle_language:
+      config?.subtitle_language ??
+      config?.content_language ??
+      DEFAULT_CONTENT_LANGUAGE,
     ethnicity: isLegacyDefault
       ? DEFAULT_ETHNICITY
       : (config?.ethnicity ?? DEFAULT_ETHNICITY),
@@ -220,6 +254,9 @@ function resolveIngestSettings(
     spine_template: values.spine_template ?? defaults.spine_template,
     visual_style: values.visual_style ?? defaults.visual_style,
     narration_style: values.narration_style ?? defaults.narration_style,
+    content_language: values.content_language ?? defaults.content_language,
+    subtitle_language:
+      values.subtitle_language ?? defaults.subtitle_language,
     ethnicity: values.ethnicity ?? defaults.ethnicity,
   };
 }
@@ -1851,6 +1888,64 @@ export function IngestPageContent({ project }: { project: string }) {
                 )}
 
                 <Select
+                  value={settingsValues.content_language}
+                  onValueChange={(val) =>
+                    handleFieldChange("content_language", val ?? undefined)
+                  }
+                >
+                  <SelectTrigger className={COMPACT_SELECT_TRIGGER_CLASS}>
+                    <SelectValue placeholder={t("ingest.selectPlaceholder")}>
+                      {(val: string) => {
+                        const opt = CONTENT_LANGUAGE_OPTIONS.find(
+                          (o) => o.value === val,
+                        );
+                        return opt ? t(opt.labelKey) : val;
+                      }}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent
+                    alignItemWithTrigger={false}
+                    sideOffset={8}
+                    className={COMPACT_SELECT_CONTENT_CLASS}
+                  >
+                    {CONTENT_LANGUAGE_OPTIONS.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>
+                        {t(opt.labelKey)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                <Select
+                  value={settingsValues.subtitle_language}
+                  onValueChange={(val) =>
+                    handleFieldChange("subtitle_language", val ?? undefined)
+                  }
+                >
+                  <SelectTrigger className={COMPACT_SELECT_TRIGGER_CLASS}>
+                    <SelectValue placeholder={t("ingest.selectPlaceholder")}>
+                      {(val: string) => {
+                        const opt = SUBTITLE_LANGUAGE_OPTIONS.find(
+                          (o) => o.value === val,
+                        );
+                        return opt ? t(opt.labelKey) : val;
+                      }}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent
+                    alignItemWithTrigger={false}
+                    sideOffset={8}
+                    className={COMPACT_SELECT_CONTENT_CLASS}
+                  >
+                    {SUBTITLE_LANGUAGE_OPTIONS.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>
+                        {t(opt.labelKey)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                <Select
                   value={settingsValues.ethnicity}
                   onValueChange={(val) =>
                     handleFieldChange("ethnicity", val ?? undefined)
@@ -2132,6 +2227,16 @@ export function IngestPageContent({ project }: { project: string }) {
                               },
                             ]
                           : []),
+                        {
+                          label: t("ingest.contentLanguage"),
+                          options: CONTENT_LANGUAGE_OPTIONS,
+                          value: settingsValues.content_language,
+                        },
+                        {
+                          label: t("ingest.subtitleLanguage"),
+                          options: SUBTITLE_LANGUAGE_OPTIONS,
+                          value: settingsValues.subtitle_language,
+                        },
                         {
                           label: t("ingest.ethnicity"),
                           options: ETHNICITY_OPTIONS,

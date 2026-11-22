@@ -27,11 +27,21 @@ if TYPE_CHECKING:
 OUTPUT_DIR = STATE_DIR
 
 NARRATION_STYLE_KEY = "narration_style"
+CONTENT_LANGUAGE_KEY = "content_language"
+SUBTITLE_LANGUAGE_KEY = "subtitle_language"
 NARRATOR_AUDIO_PATH_KEY = "narrator_reference_audio_path"
 NARRATOR_AUDIO_SHA256_KEY = "narrator_reference_audio_sha256"
 NARRATOR_AUDIO_UPDATED_AT_KEY = "narrator_reference_audio_updated_at"
 DEFAULT_NARRATION_STYLE = "third_person"
 _VALID_NARRATION_STYLES = {"first_person", "third_person"}
+# Narration / audio language and subtitle language (id | en | zh).
+# Deliberately NOT derived from the UI language: the UI may be English
+# while the content is Indonesian. The project default is Indonesian,
+# matching the content this fork is used for. Subtitle language defaults
+# to the content language and may be "none" to disable subtitles.
+DEFAULT_CONTENT_LANGUAGE = "id"
+_VALID_CONTENT_LANGUAGES = {"id", "en", "zh"}
+_VALID_SUBTITLE_LANGUAGES = {"id", "en", "zh", "none"}
 DEFAULT_ASPECT_RATIO = "2:3"
 
 
@@ -493,6 +503,52 @@ def load_effective_narration_style_for_voice_from_state_dir(state_dir: str | Pat
     """Return the effective voice style from an explicitly resolved state directory."""
     return _load_effective_narration_style_for_voice_from_config(
         load_project_config_file_from_state_dir(state_dir)
+    )
+
+
+def _load_content_language_from_config(config: dict) -> str:
+    language = str(config.get(CONTENT_LANGUAGE_KEY) or "").strip().lower()
+    return language if language in _VALID_CONTENT_LANGUAGES else DEFAULT_CONTENT_LANGUAGE
+
+
+def _load_subtitle_language_from_config(config: dict) -> str:
+    language = str(config.get(SUBTITLE_LANGUAGE_KEY) or "").strip().lower()
+    if language in _VALID_SUBTITLE_LANGUAGES:
+        return language
+    # Unset or invalid: subtitles follow the narration language.
+    return _load_content_language_from_config(config)
+
+
+def load_content_language(username: str, project: str) -> str:
+    """Return the project-level narration/audio language ("id" / "en" / "zh")."""
+    return _load_content_language_from_config(load_project_config_file(username, project))
+
+
+def load_content_language_from_state_dir(state_dir: str | Path) -> str:
+    """Return the narration/audio language stored in an explicitly resolved state directory."""
+    return _load_content_language_from_config(
+        load_project_config_file_from_state_dir(state_dir)
+    )
+
+
+def load_subtitle_language(username: str, project: str) -> str:
+    """Return the project-level subtitle language ("id" / "en" / "zh" / "none")."""
+    return _load_subtitle_language_from_config(load_project_config_file(username, project))
+
+
+def load_subtitle_language_from_state_dir(state_dir: str | Path) -> str:
+    """Return the subtitle language stored in an explicitly resolved state directory."""
+    return _load_subtitle_language_from_config(
+        load_project_config_file_from_state_dir(state_dir)
+    )
+
+
+def load_content_languages_from_state_dir(state_dir: str | Path) -> tuple[str, str]:
+    """Return ``(content_language, subtitle_language)`` for a state directory."""
+    config = load_project_config_file_from_state_dir(state_dir)
+    return (
+        _load_content_language_from_config(config),
+        _load_subtitle_language_from_config(config),
     )
 
 

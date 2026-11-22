@@ -41,7 +41,7 @@ from novelvideo.utils.source_language import (
         ("Tú comes.", "zh"),
         ("JUAN: Tú comes.", "zh"),
         ("Tu marches.", "zh"),
-        ("Dia sering tersenyum.", "zh"),
+        ("Dia sering tersenyum.", "id"),
         ("Christopher Montgomery：你好。", "zh"),
         ("", "zh"),
     ],

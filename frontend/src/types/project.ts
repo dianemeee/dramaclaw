@@ -7,6 +7,12 @@ export interface ProjectConfig {
   aspect_ratio?: "2:3" | "9:16" | "16:9";
   visual_style?: string;
   narration_style?: string;
+  // Narration / audio language (id | en | zh) and subtitle language
+  // (id | en | zh | none). Separate from the UI language: the UI may be
+  // English while the narration is Indonesian. Subtitle language
+  // defaults to the content language when unset.
+  content_language?: "id" | "en" | "zh";
+  subtitle_language?: "id" | "en" | "zh" | "none";
   ethnicity?: string;
   rhythm?: string;
   tts_provider?: string;

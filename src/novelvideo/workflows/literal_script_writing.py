@@ -37,6 +37,7 @@ from novelvideo.utils.source_language import (
     AssetLanguage,
     asset_language_instruction,
     detect_asset_language,
+    resolve_content_language,
 )
 
 DIALOGUE_RE = re.compile(r"^(?P<speaker>[^：:]{1,24})[：:](?P<speech>.+)$")
@@ -447,6 +448,7 @@ class LiteralScriptWritingWorkflow:
         narration_style: str = "first_person",
         visual_style: str = "chinese_period_drama",
         protagonist_name: str = "",
+        output_language: str | None = None,
         on_progress: Optional[Callable[[float, str], None]] = None,
         on_log: Optional[Callable[[str], None]] = None,
         **_: Any,
@@ -482,7 +484,12 @@ class LiteralScriptWritingWorkflow:
             )
         if not source_text.strip():
             raise ValueError("当前集原文为空，无法逐行生成脚本")
-        self._output_language = detect_asset_language(source_text)
+        # An explicit project language (content_language) wins; detection
+        # from the source text is only the fallback when none is given.
+        self._output_language = (
+            resolve_content_language(output_language)
+            or detect_asset_language(source_text)
+        )
         source_text_sha256 = sha256(source_text.encode("utf-8")).hexdigest()
 
         # Every script entry point shares this workflow. Prepare the episode

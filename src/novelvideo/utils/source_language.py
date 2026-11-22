@@ -12,7 +12,7 @@ import langid
 from langdetect import DetectorFactory, LangDetectException, detect
 import wordninja
 
-AssetLanguage = Literal["zh", "en"]
+AssetLanguage = Literal["zh", "en", "id"]
 
 DetectorFactory.seed = 0
 
@@ -29,10 +29,15 @@ _SHORT_ENGLISH_ACTION_RE = re.compile(
 
 
 def detect_asset_language(text: str) -> AssetLanguage:
-    """Choose Chinese or English from the dominant script in ``text``.
+    """Choose Chinese, English or Indonesian from the dominant script in ``text``.
 
-    Chinese and English are the only languages in this contract. Any other
-    script, a tie, or empty input retains the historical Chinese default.
+    Chinese, English and Indonesian are the languages in this contract.
+    Any other script, a tie, or empty input retains the historical Chinese
+    default. Indonesian is Latin-script text: it is recognised from the
+    primary (langdetect) result alone, because the secondary detector
+    misclassifies short Indonesian as English (e.g. "Dia sering
+    tersenyum." -> langid "en"). The English checks above already ran,
+    so English that either detector reads as English still wins.
     """
     raw_text = str(text or "")
     raw_lines = [line.strip() for line in raw_text.splitlines()]
@@ -90,6 +95,13 @@ def detect_asset_language(text: str) -> AssetLanguage:
         if english_words and max(word_costs) <= 11:
             return "en"
 
+    # Indonesian: Latin-script prose the primary detector reads as "id".
+    # This runs after every English check above, so English that either
+    # detector reads as English still wins as English. langid is NOT
+    # required to agree: it misclassifies short Indonesian as English.
+    if detected == "id":
+        return "id"
+
     # Unsupported natural languages — including kana/Hangul prose and Latin
     # languages that happen to be ASCII-only — retain the Chinese fallback.
     # Non-ASCII letters are deliberately not decisive: proper names such as
@@ -102,6 +114,12 @@ def asset_language_instruction(language: AssetLanguage) -> str:
     if language == "en":
         return (
             "Write every user-visible prose field in English. "
+            "Keep every supplied character and location name verbatim; "
+            "never translate, romanize, or rewrite a name."
+        )
+    if language == "id":
+        return (
+            "Write every user-visible prose field in Bahasa Indonesia. "
             "Keep every supplied character and location name verbatim; "
             "never translate, romanize, or rewrite a name."
         )
@@ -129,8 +147,35 @@ def default_asset_language() -> AssetLanguage:
     return "zh"
 
 
+def resolve_content_language(language: str | None) -> AssetLanguage | None:
+    """Resolve an explicit story / narration language, or ``None`` if unset.
+
+    Unlike :func:`resolve_asset_language` (visual-prompt resolution, where
+    Indonesian maps to English because the image / video models are
+    prompted in English), story and narration prose keep ``"id"`` as
+    Indonesian. Returns ``None`` for empty / unsupported values so the
+    caller can apply its own default.
+    """
+    if language:
+        tag = language.strip().lower()
+        if tag.startswith("id"):
+            return "id"
+        if tag.startswith("en"):
+            return "en"
+        if tag.startswith("zh"):
+            return "zh"
+    return None
+
+
 def resolve_asset_language(language: str | None) -> AssetLanguage:
-    """Resolve an explicit asset language, falling back to the default."""
+    """Resolve an explicit asset language, falling back to the default.
+
+    This is the *visual-prompt* resolution: ``"id"`` maps to English,
+    because image / video prompt fields are prompted in English upstream
+    and Indonesian asset prose would degrade generation. For story /
+    narration prose use :func:`resolve_content_language` instead, which
+    keeps ``"id"`` as Indonesian.
+    """
     if language:
         tag = language.strip().lower()
         if tag.startswith("en") or tag.startswith("id"):
