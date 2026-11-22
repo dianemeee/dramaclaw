@@ -551,7 +551,7 @@ class _Session:
     async def __aexit__(self, *_args):
         return None
 
-    def get(self, _url: str):
+    def get(self, _url: str, headers: dict | None = None):
         return _Response(self._chunks)
 
 

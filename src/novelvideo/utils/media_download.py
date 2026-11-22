@@ -23,8 +23,14 @@ async def download_to_path(
     *,
     expected_size: int | None = None,
     expected_sha256: str | None = None,
+    headers: dict[str, str] | None = None,
 ) -> VideoDeliveryReceipt:
-    """Stream media into a sibling temp file and atomically publish it."""
+    """Stream media into a sibling temp file and atomically publish it.
+
+    ``headers`` is sent only when the caller supplies it — callers must
+    only attach credentials for URLs hosted by the gateway itself, never
+    for third-party result URLs.
+    """
 
     destination = Path(output_path)
     try:
@@ -54,7 +60,7 @@ async def download_to_path(
             else:
                 timeout = aiohttp.ClientTimeout(total=600)
                 async with aiohttp.ClientSession(timeout=timeout) as session:
-                    async with session.get(url) as response:
+                    async with session.get(url, headers=headers) as response:
                         if response.status < 200 or response.status >= 300:
                             raise with_upstream_status(
                                 VideoDeliveryError(

@@ -2175,7 +2175,19 @@ class NewApiVideoGenerator(VideoGeneratorBase):
     async def _download_video(self, url: str, output_path: str) -> VideoDeliveryReceipt:
         from novelvideo.utils.media_download import download_to_path
 
-        return await download_to_path(url, output_path)
+        # The gateway's own result URLs (e.g. /v1/videos/{task}/content)
+        # require a valid token, but the plain downloader sends none — the
+        # fetch then fails 401 "Invalid token" and the poll loop retries it
+        # forever at ~99%. Attach the gateway key only when the resolved
+        # URL is hosted by the gateway itself; public result URLs (CDN,
+        # archive) must never receive the credential.
+        resolved = self._resolve_result_url(url)
+        headers: dict[str, str] | None = None
+        if self.api_key:
+            gateway_host = urllib.parse.urlsplit(self.base_url).hostname
+            if gateway_host and urllib.parse.urlsplit(resolved).hostname == gateway_host:
+                headers = {"Authorization": f"Bearer {self.api_key}"}
+        return await download_to_path(resolved, output_path, headers=headers)
 
     @staticmethod
     def _archive_state(task: dict) -> tuple[str, bool] | None:
