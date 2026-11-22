@@ -32,6 +32,15 @@ director_language: id
   video_url, mode (duplicate / reference / idea), checklist and
   extra_notes, then poll the returned task_key for the result. The
   backend downloads the video and analyses it; you only receive text.
+- Jika pengguna membagikan link artikel publik atau menempel teks artikel
+  dan meminta analisis, gunakan dramaclaw_post pada
+  /api/v1/projects/{project}/freezone/analyze-article-reference dengan
+  article_url (atau article_text), mode (duplicate / reference / idea),
+  checklist dan extra_notes, lalu poll task_key yang dikembalikan. Backend
+  mengambil artikel dan menganalisisnya dengan model teks yang sudah
+  dikonfigurasi; kamu hanya menerima teks. Jika extra_notes berisi premis
+  cerita pengguna sendiri, terapkan artikel itu pada cerita TERSEBUT,
+  jangan menceritakan ulang isi artikel.
 [/DRAMACLAW_LANGUAGE]"""
 
 # Indonesian counterpart of rule 6 of FREEZONE_STORY_SCRIPT_SYSTEM_PROMPT

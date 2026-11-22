@@ -90,6 +90,7 @@ from novelvideo.api.schemas import (
     FreezoneAnalyzeShotsRequest,
     FreezoneAnalyzeVideoStoryRequest,
     FreezoneAnalyzeVideoReferenceRequest,
+    FreezoneAnalyzeArticleReferenceRequest,
     FreezoneAssetCopyRequest,
     FreezoneAssetLibraryFolderPatchRequest,
     FreezoneAssetLibraryFolderRequest,
@@ -3251,6 +3252,7 @@ async def _enqueue_or_start_freezone_video_analysis(
         "freezone_video_story",
         "freezone_video_breakdown",
         "freezone_video_reference",
+        "freezone_article_reference",
     ],
     job_id: str,
     payload: dict,
@@ -7938,6 +7940,67 @@ async def freezone_analyze_video_reference(
         job_id=job_id,
         payload={
             "video_url": video_url,
+            "mode": mode,
+            "checklist": list(checklist),
+            "extra_notes": str(body.extra_notes or ""),
+            "model": (str(body.model or "").strip() or None),
+        },
+    )
+
+
+@router.post(
+    "/projects/{project}/freezone/analyze-article-reference",
+    tags=[TAG_FREEZONE_VIDEO],
+)
+async def freezone_analyze_article_reference(
+    project: str,
+    body: FreezoneAnalyzeArticleReferenceRequest,
+    user: dict = Depends(get_api_user),
+):
+    """参考文章分析：给一个公开文章链接（后端抓取正文）或直接粘贴文章
+    文本，按 mode（duplicate / reference / idea）+ checklist + 备注分析，
+    返回任务 `task_key`。与 analyze-video-reference 的区别：这里是纯文
+    本，走已配置的 NewAPI 文本模型，不需要视频模型或额外 API key；分析
+    跑在后台任务里，前端轮询 task_key 取结果。
+
+    Freezone 和 Series 都能用：模型和回复语言在后端按持久化配置 / 环境
+    变量解析，不依赖前端 chat context（Series 不转发 context）。
+    """
+    from novelvideo.freezone.article_reference import (
+        ArticleReferenceError,
+        normalize_article_reference_checklist,
+        normalize_article_reference_mode,
+    )
+
+    ctx, username, project_name, project_dir, output_dir = (
+        await _resolve_freezone_project(project, user)
+    )
+    article_url = str(body.article_url or "").strip()
+    article_text = str(body.article_text or "").strip()
+    if not article_url and not article_text:
+        raise HTTPException(
+            400, "Give an article link or paste the article text."
+        )
+    try:
+        mode = normalize_article_reference_mode(body.mode)
+        checklist = normalize_article_reference_checklist(body.checklist)
+        if article_url and "://" not in article_url:
+            raise ArticleReferenceError("article_url must be an http(s) URL.")
+    except ArticleReferenceError as exc:
+        raise HTTPException(400, str(exc)) from exc
+
+    job_id = _new_job_id()
+    return await _enqueue_or_start_freezone_video_analysis(
+        ctx=ctx,
+        username=username,
+        project=project_name,
+        project_dir=project_dir,
+        output_dir=output_dir,
+        task_type="freezone_article_reference",
+        job_id=job_id,
+        payload={
+            "article_url": article_url,
+            "article_text": article_text,
             "mode": mode,
             "checklist": list(checklist),
             "extra_notes": str(body.extra_notes or ""),

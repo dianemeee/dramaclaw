@@ -575,6 +575,11 @@ FREEZONE_LEAF_EGRESS: dict[str, LeafEgressRule] = {
     "analyze_video_reference": LeafEgressRule(
         "novelvideo.freezone.video_reference", LeafEgress.NETWORK, "EG-18b"
     ),
+    # Reference-article analysis: fetch + text model through the NewAPI
+    # gateway (same egress point as the other freezone text leaves).
+    "analyze_article_reference": LeafEgressRule(
+        "novelvideo.freezone.article_reference", LeafEgress.NETWORK, "EG-18a"
+    ),
     # 逐帧拉片：本地 ffmpeg 抽帧/切片 + 一跳 Vision，出网点与 analyze_shots 相同。
     "run_freezone_video_breakdown": LeafEgressRule(
         "novelvideo.freezone.jobs", LeafEgress.NETWORK, "EG-18b"
@@ -1550,6 +1555,68 @@ def run_freezone_video_reference(
     )
 
 
+async def _run_freezone_article_reference_async(
+    envelope: dict[str, Any],
+    ctx: ProjectContext,
+) -> dict[str, Any]:
+    """Fetch / analyse one reference article, save analysis.json.
+
+    Works in both Freezone and Series: the model and reply language are
+    resolved server-side (persisted setting / env vars), never from the
+    chat ``context`` the frontend only forwards in Freezone.
+    """
+    import json
+
+    from novelvideo.api.deps import make_static_url_for_context
+    from novelvideo.freezone.jobs import ensure_freezone_dirs
+    from novelvideo.freezone.paths import outputs_dir
+    from novelvideo.freezone.article_reference import analyze_article_reference
+
+    payload = envelope.get("payload") or {}
+    job_id = str(payload["job_id"])
+    project_dir = Path(str(payload.get("project_dir") or ctx.output_dir))
+    ensure_freezone_dirs(project_dir)
+    _update(ctx, "freezone_article_reference", job_id, 0.1, "分析参考文章...")
+    result = await _call_freezone_leaf(
+        envelope,
+        analyze_article_reference,
+        "analyze_article_reference",
+        article_url=str(payload.get("article_url") or "") or None,
+        article_text=str(payload.get("article_text") or "") or None,
+        mode=str(payload.get("mode") or "reference"),
+        checklist=payload.get("checklist") or (),
+        extra_notes=str(payload.get("extra_notes") or ""),
+        model=(str(payload.get("model") or "").strip() or None),
+    )
+    _update(ctx, "freezone_article_reference", job_id, 0.9, "保存分析结果...")
+    out_dir = outputs_dir(project_dir, "freezone_article_reference") / job_id
+    out_dir.mkdir(parents=True, exist_ok=True)
+    out_file = out_dir / "analysis.json"
+    out_file.write_text(
+        json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
+    return {
+        "job_id": job_id,
+        "output_url": make_static_url_for_context(
+            ctx,
+            out_file.relative_to(project_dir).as_posix(),
+        ),
+        "analysis": result.get("analysis"),
+        "source": result.get("source"),
+        "model": result.get("model"),
+        "metadata": result.get("metadata") or {},
+        "fallback": result.get("fallback"),
+    }
+
+
+def run_freezone_article_reference(
+    envelope: dict[str, Any], ctx: ProjectContext
+) -> dict[str, Any]:
+    return _run_cancellable(
+        envelope, _run_freezone_article_reference_async(envelope, ctx)
+    )
+
+
 async def _run_freezone_video_erase_async(
     envelope: dict[str, Any],
     ctx: ProjectContext,
@@ -2467,6 +2534,11 @@ register_project_task_runner(
 register_project_task_runner(
     "freezone_video_reference",
     run_freezone_video_reference,
+    requires_home_node=False,
+)
+register_project_task_runner(
+    "freezone_article_reference",
+    run_freezone_article_reference,
     requires_home_node=False,
 )
 register_project_task_runner(

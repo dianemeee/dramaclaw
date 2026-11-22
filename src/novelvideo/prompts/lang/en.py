@@ -24,6 +24,15 @@ director_language: en
   video_url, mode (duplicate / reference / idea), checklist and
   extra_notes, then poll the returned task_key for the result. The
   backend downloads the video and analyses it; you only receive text.
+- If the user shares a public article link or pastes article text and
+  asks for an analysis, use the dramaclaw_post tool on
+  /api/v1/projects/{project}/freezone/analyze-article-reference with
+  article_url (or article_text), mode (duplicate / reference / idea),
+  checklist and extra_notes, then poll the returned task_key for the
+  result. The backend fetches the article and analyses it with the
+  configured text model; you only receive text. If extra_notes carries
+  the user's own story premise, apply the article to THAT story instead
+  of retelling the article's story.
 [/DRAMACLAW_LANGUAGE]"""
 
 # English counterpart of rule 6 of FREEZONE_STORY_SCRIPT_SYSTEM_PROMPT

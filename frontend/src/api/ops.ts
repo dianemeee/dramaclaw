@@ -356,6 +356,7 @@ export interface FreezoneJobRef {
     | "freezone_story_script"
     | "freezone_analyze_video_story"
     | "freezone_video_reference"
+    | "freezone_article_reference"
     | "stage_asset";
   job_id: string;
   task_key: string;
@@ -2026,6 +2027,7 @@ export async function fetchFreezoneJobResult(
     | "freezone_story_script"
     | "freezone_analyze_video_story"
     | "freezone_video_reference"
+    | "freezone_article_reference"
     | "stage_asset",
   jobId: string,
 ): Promise<FreezoneJobResult> {
@@ -2613,6 +2615,43 @@ export async function submitFreezoneAnalyzeVideoReference(
   if (payload.model) body.model = payload.model;
   return await apiCall<FreezoneJobRef>(
     `projects/${encodeURIComponent(project)}/freezone/analyze-video-reference`,
+    { method: "POST", json: body },
+  );
+}
+
+// /freezone/video-breakdown ---------------------------------------------- //
+
+export type ArticleReferenceMode = "duplicate" | "reference" | "idea";
+
+export interface FreezoneAnalyzeArticleReferencePayload {
+  /** Public article link; the backend fetches and extracts the text. */
+  articleUrl?: string;
+  /** Article text pasted directly (alternative to a link). */
+  articleText?: string;
+  /** duplicate | reference | idea; defaults to reference backend-side. */
+  mode?: ArticleReferenceMode;
+  /** Aspects to analyse; empty = analyse all. */
+  checklist?: string[];
+  /** Free text: anything extra — e.g. the user's own story premise. */
+  extraNotes?: string;
+  /** Text model override; empty = configured NewAPI text model. */
+  model?: string;
+}
+
+export async function submitFreezoneAnalyzeArticleReference(
+  project: string,
+  payload: FreezoneAnalyzeArticleReferencePayload,
+): Promise<FreezoneJobRef> {
+  const body: Record<string, unknown> = {
+    article_url: payload.articleUrl ?? "",
+    article_text: payload.articleText ?? "",
+    mode: payload.mode ?? "reference",
+    checklist: payload.checklist ?? [],
+    extra_notes: payload.extraNotes ?? "",
+  };
+  if (payload.model) body.model = payload.model;
+  return await apiCall<FreezoneJobRef>(
+    `projects/${encodeURIComponent(project)}/freezone/analyze-article-reference`,
     { method: "POST", json: body },
   );
 }

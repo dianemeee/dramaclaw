@@ -905,6 +905,54 @@ class FreezoneAnalyzeVideoReferenceRequest(BaseModel):
     )
 
 
+class FreezoneAnalyzeArticleReferenceRequest(BaseModel):
+    """Analyse a reference article (link or pasted text).
+
+    Unlike ``analyze-video-reference`` this takes text, not a video, and
+    needs no video model or extra API key — the analysis runs through the
+    already-configured NewAPI text model. Give exactly one of
+    ``article_url`` / ``article_text`` (pasted text wins if both are
+    given). All other fields are optional; empty means "analyse
+    everything, reference mode".
+    """
+
+    article_url: str = Field(
+        default="",
+        description="Public article link, e.g. a news / blog / story URL",
+        examples=["https://example.com/a-short-story"],
+    )
+    article_text: str = Field(
+        default="",
+        description="Article text pasted directly (alternative to a link)",
+    )
+    mode: str = Field(
+        default="reference",
+        description="duplicate | reference | idea",
+    )
+    checklist: list[str] = Field(
+        default_factory=list,
+        description=(
+            "Aspects to analyse, any of: hook, pacing, transitions, "
+            "dialogue, scene_structure, camera, music, characters, "
+            "visual_style. Empty = analyse all."
+        ),
+    )
+    extra_notes: str = Field(
+        default="",
+        description=(
+            "Free text: anything extra to analyse — e.g. the user's own "
+            "story premise to apply the article to"
+        ),
+    )
+    model: Optional[str] = Field(
+        default=None,
+        description=(
+            "Text model override. Empty = the configured NewAPI text "
+            "model, else the ARTICLE_ANALYSIS_MODEL env var."
+        ),
+    )
+
+
 class FreezoneVideoBreakdownRequest(BaseModel):
     """逐帧拉片请求：把一条视频拆成分镜 / 动态 / 音乐三个维度的参考素材。
 
