@@ -12,6 +12,7 @@ from copy import deepcopy
 from pathlib import Path
 from typing import Any
 
+from novelvideo.chat import request_context
 from novelvideo.chat.agent_key_session import agent_key_mode
 from novelvideo.prompts.lang import resolve_director_language, workflow_item_titles
 from novelvideo.freezone.workflow_schema import (
@@ -5211,16 +5212,16 @@ def _merge_agent_config_items(
 
 def _catalog_username() -> str:
     # The hosted MCP adapter binds this identity from the authenticated turn.
-    authenticated_user = os.environ.get("DRAMACLAW_USERNAME", "").strip()
+    authenticated_user = request_context.get("DRAMACLAW_USERNAME", "").strip()
     if authenticated_user:
         return authenticated_user
     if os.environ.get("ST_EDITION", "").strip().lower() == "ce":
         return "local"
     return (
-        os.environ.get("DRAMACLAW_USERNAME")
-        or os.environ.get("DRAMACLAW_USER")
-        or os.environ.get("SUPERTALE_USER")
-        or os.environ.get("FREEZONE_USER")
+        request_context.get("DRAMACLAW_USERNAME")
+        or request_context.get("DRAMACLAW_USER")
+        or request_context.get("SUPERTALE_USER")
+        or request_context.get("FREEZONE_USER")
         or "local"
     ).strip()
 
