@@ -49,6 +49,13 @@ def video_duration_bounds_for_backend(
         if bounds:
             return bounds
         lowered_model = model.lower()
+        if lowered_model == "muse-video":
+            # muse-video caps at 10s per clip (observed model behaviour;
+            # muse2api itself states no explicit limit — its VideoRequest
+            # takes any duration and defaults to 6s — and no floor either:
+            # the repo's own template test plans a 4s clip). Cap only; the
+            # model's cap applies on both the gateway and direct routes.
+            return (None, 10)
         if lowered_model == "seedance-2.0-mini":
             return (4, 15)
         if lowered_model == "happyhorse-1.0":

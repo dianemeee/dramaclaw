@@ -234,6 +234,14 @@ _DETERMINISTIC_SKILL_PLANNERS = {
         "default_item_count": 3,
         "deliverables": ["video"],
         "default_deliverable": "video",
+        # Audio stays opt-in at the profile level: include_audio=true makes
+        # narration mandatory per unit (the expander rejects intents without
+        # literal narration), so flipping the default would break every
+        # silent-by-choice intent. Narration reaches the video anyway as a
+        # standard element: the outline carries one narration line per scene
+        # and the clip prompt quotes it for the video model's own audio.
+        # The audio stage exists so an intent can opt into a separate voice
+        # track (include_audio=true) without tripping the stage preflight.
         "default_include_audio": False,
         "stages": [
             _stage(
@@ -249,6 +257,7 @@ _DETERMINISTIC_SKILL_PLANNERS = {
                 required=True,
             ),
             _stage("video", "videoNode", ["general-video"], required=True),
+            _stage("audio", "audioNode", ["general-audio"], required=False),
         ],
         "edges": [["planning", "images"], ["images", "video"]],
     },
@@ -824,11 +833,25 @@ def template_isomorphism(skill_id: str, plan: Any) -> dict[str, Any]:
         unit: dict[str, Any] = {
             "title": _node_text(node, "title", "name", "label", "displayName")
             or f"内容段 {index + 1}",
-            "prompt": _node_text(node, "prompt", "description", "content")
+            # Clip prompts carry the planner-appended duration / narration
+            # sections; strip them so the recovered unit is the clean scene
+            # brief the standard planner would append them to again.
+            "prompt": _strip_clip_prompt_annotations(
+                _node_text(node, "prompt", "description", "content")
+            )
             or f"内容段 {index + 1}",
         }
         if narrations[index] is not None:
             unit["narration"] = narrations[index]
+        else:
+            # A narrated clip carries its voice-over line in the prompt
+            # itself (no separate speech node); recover it so the round
+            # trip reproduces the same narration section.
+            recovered_narration = _narration_from_clip_prompt(
+                _node_text(node, "prompt", "description", "content")
+            )
+            if recovered_narration:
+                unit["narration"] = recovered_narration
         duration = _positive_duration_seconds(data.get("durationSec"))
         if video_nodes and duration is not None:
             unit["duration_seconds"] = duration
@@ -976,6 +999,10 @@ def _node_signature(node: dict[str, Any]) -> tuple:
         text = ""  # the planner writes a fixed caption; not a user decision
     else:
         text = _node_text(node, "prompt", "description", "content")
+    if node_type == "videoNode":
+        # The planner appends a duration line to clip prompts; it is
+        # generated boilerplate, not user content (see _strip_clip_prompt_duration).
+        text = _strip_clip_prompt_duration(text)
     catalog = (
         data.get("workflowCatalog")
         if isinstance(data.get("workflowCatalog"), dict)
@@ -2435,6 +2462,9 @@ def _standard_skill_items(
                     stage=image_id,
                 )
             )
+    # Last clip id emitted, so a sequential plan chains each scene to the
+    # previous scene's final chunk (not its first) when scenes are split.
+    previous_clip_id: str | None = None
     for index, unit in enumerate(units, 1):
         if skill_id == "short-drama-quick":
             source_id = f"shot_plan_{index}"
@@ -2495,29 +2525,92 @@ def _standard_skill_items(
             video_source_id = source_id
         if deliverable != "images":
             video_dependencies = [video_source_id]
-            if video_dependency == "sequential" and index > 1:
-                video_dependencies.append(f"clip_{index - 1}")
-            items.append(
-                _planned_item(
-                    item_id=f"clip_{index}",
-                    title=f"{unit['title']}{titles['video_suffix']}",
-                    prompt=unit["prompt"],
-                    recipe_id="general-video",
-                    depends_on=video_dependencies,
-                    stage="video",
-                    # The shot plan is what the clip renders, not a gate ahead of
-                    # it: reference it so the edge is prompt_for and the runtime
-                    # feeds the shot text into the video prompt (issue #677).
-                    reference_inputs=(
-                        [video_source_id, source_id]
-                        if skill_id == "short-drama-quick"
-                        else None
-                    ),
-                    timeline_role="visual",
-                    duration_seconds=unit.get("duration_seconds"),
+            if video_dependency == "sequential" and previous_clip_id is not None:
+                video_dependencies.append(previous_clip_id)
+            if skill_id == "text-to-image-video":
+                # muse-video caps at 10s per clip, so a scene longer than
+                # that is split into sequential chunks (10 + remainder),
+                # each with its own duration stated in the prompt text and
+                # the duration parameter, and its share of the narration.
+                # Later chunks depend on the previous chunk, so each one
+                # continues from the last frame of the one before it; the
+                # compose step sequences every chunk in plan order.
+                chunk_seconds = _clip_durations_for_scene(
+                    _scene_clip_seconds(unit)
                 )
-            )
-        if include_audio and skill_id in {"video-tutorial", "short-drama-quick"}:
+                chunk_narrations = _split_narration(
+                    unit["narration"], chunk_seconds
+                )
+                previous_chunk_id: str | None = None
+                for chunk_index, seconds in enumerate(chunk_seconds):
+                    chunk_id = (
+                        f"clip_{index}"
+                        if chunk_index == 0
+                        else f"clip_{index}_{chunk_index + 1}"
+                    )
+                    narration_part = chunk_narrations[chunk_index]
+                    items.append(
+                        _planned_item(
+                            item_id=chunk_id,
+                            title=(
+                                f"{unit['title']}{titles['video_suffix']}"
+                                if chunk_index == 0
+                                else (
+                                    f"{unit['title']}{titles['video_suffix']} "
+                                    f"({chunk_index + 1}/{len(chunk_seconds)})"
+                                )
+                            ),
+                            prompt=_clip_prompt_with_narration(
+                                unit["prompt"],
+                                narration_part,
+                                content_language,
+                                seconds,
+                            ),
+                            recipe_id="general-video",
+                            depends_on=(
+                                video_dependencies
+                                if chunk_index == 0
+                                else [previous_chunk_id]
+                            ),
+                            stage="video",
+                            timeline_role="visual",
+                            **(
+                                {"narration": narration_part}
+                                if narration_part
+                                else {}
+                            ),
+                            duration_seconds=seconds,
+                        )
+                    )
+                    previous_chunk_id = chunk_id
+                previous_clip_id = previous_chunk_id
+            else:
+                items.append(
+                    _planned_item(
+                        item_id=f"clip_{index}",
+                        title=f"{unit['title']}{titles['video_suffix']}",
+                        prompt=unit["prompt"],
+                        recipe_id="general-video",
+                        depends_on=video_dependencies,
+                        stage="video",
+                        # The shot plan is what the clip renders, not a gate ahead of
+                        # it: reference it so the edge is prompt_for and the runtime
+                        # feeds the shot text into the video prompt (issue #677).
+                        reference_inputs=(
+                            [video_source_id, source_id]
+                            if skill_id == "short-drama-quick"
+                            else None
+                        ),
+                        timeline_role="visual",
+                        duration_seconds=unit.get("duration_seconds"),
+                    )
+                )
+                previous_clip_id = f"clip_{index}"
+        if include_audio and skill_id in {
+            "video-tutorial",
+            "short-drama-quick",
+            "text-to-image-video",
+        }:
             narration = _text(unit.get("narration"))
             deferred_short_drama_speech = (
                 skill_id == "short-drama-quick" and not narration
@@ -2569,6 +2662,192 @@ def _background_music_prompt(user_goal: str, content_language: str | None) -> st
         "zh": "{goal}，生成与情绪节奏匹配的纯音乐",
     }
     return templates[language].format(goal=user_goal)
+
+
+# Markers of the sections _clip_prompt_with_narration appends to a clip
+# prompt. _strip_clip_prompt_annotations matches on these exact prefixes so
+# a user's own words are never cut.
+_CLIP_PROMPT_DURATION_PREFIX = "【时长】本片段时长为"
+_CLIP_PROMPT_NARRATION_PREFIX = "【旁白/音频】本片段由视频模型自行生成音频"
+
+
+def _narration_from_clip_prompt(prompt: str) -> str:
+    """Recover the narration line quoted in a clip prompt's narration section.
+
+    Mirrors _clip_prompt_with_narration: the section ends with :"<line>".
+    Returns "" when the prompt carries no narration section.
+    """
+    text = prompt or ""
+    index = text.find(_CLIP_PROMPT_NARRATION_PREFIX)
+    if index < 0:
+        return ""
+    rest = text[index:]
+    first = rest.find('"')
+    last = rest.rfind('"')
+    if first < 0 or last <= first:
+        return ""
+    return rest[first + 1 : last]
+
+
+def _strip_clip_prompt_sections(prompt: str, *, narration: bool) -> str:
+    """Drop the planner-appended sections from a clip prompt.
+
+    The duration section is generated boilerplate; the narration section
+    quotes the scene's voice-over line. Both are appended as their own
+    paragraphs, so dropping them leaves the scene brief untouched.
+    """
+    prefixes = [_CLIP_PROMPT_DURATION_PREFIX]
+    if narration:
+        prefixes.append(_CLIP_PROMPT_NARRATION_PREFIX)
+    parts = (prompt or "").split("\n\n")
+    kept = [part for part in parts if not part.startswith(tuple(prefixes))]
+    return "\n\n".join(kept).strip()
+
+
+def _strip_clip_prompt_annotations(prompt: str) -> str:
+    """Remove the duration / narration sections the planner appends to a clip prompt.
+
+    ``template_isomorphism`` recovers planner units from clip-node prompts;
+    without stripping, the standard planner would append the sections a
+    second time on recompile and the round trip would never match.
+    """
+    return _strip_clip_prompt_sections(prompt, narration=True)
+
+
+def _strip_clip_prompt_duration(prompt: str) -> str:
+    """Remove only the duration section from a clip prompt.
+
+    Used by the plan signature: the duration line is generated boilerplate
+    from the node's duration, not user content, so a bare agent brief and
+    the template's annotated prompt say the same thing. The narration
+    section is kept — it is user content, recovered from the prompt on the
+    round trip, so it must keep participating in the comparison.
+    """
+    return _strip_clip_prompt_sections(prompt, narration=False)
+
+
+def _clip_prompt_with_narration(
+    prompt: str,
+    narration: str,
+    content_language: str | None,
+    duration_seconds: int | None = None,
+) -> str:
+    """Append the scene's voice-over line (and its duration) to a video-clip prompt.
+
+    Video models that generate their own audio (muse-video) speak the
+    narration only when it is in the clip prompt; a separate TTS track is
+    not a substitute. The line is quoted verbatim in the project's content
+    language (Indonesian by default) so the model voices the exact story
+    line for this scene. The clip's own duration is stated explicitly in
+    the prompt text as well — muse-video caps at 10s per clip, so the
+    prompt must say how long this clip is instead of leaving it to the
+    duration parameter alone. Units without narration keep their visual
+    prompt unchanged apart from the duration line.
+    """
+    from novelvideo.utils.source_language import resolve_content_language
+
+    line = (narration or "").strip()
+    if duration_seconds is None and not line:
+        return prompt
+    parts = [prompt]
+    if duration_seconds is not None:
+        parts.append(
+            f"{_CLIP_PROMPT_DURATION_PREFIX}{duration_seconds}秒（视频模型单段上限10秒），"
+            f"画面运动与节奏按此{duration_seconds}秒设计，不得拖长或压缩。"
+        )
+    if line:
+        language = resolve_content_language(content_language) or "id"
+        voice = _CONTENT_LANGUAGE_DISPLAY[language]
+        read_seconds = duration_seconds or 10
+        parts.append(
+            f"{_CLIP_PROMPT_NARRATION_PREFIX}：纪录片旁白，以{voice}朗读以下旁白全文，"
+            f"{read_seconds}秒内读完，不得省略或改写，不得另配音乐盖过旁白：\"{line}\""
+        )
+    return "\n\n".join(parts)
+
+
+# muse-video clip bounds, mirroring video_duration_bounds_for_backend:
+# the model caps at 10s per clip (observed behaviour; muse2api states no
+# explicit limit and no floor). The 3s floor is a planner policy, not a
+# model limit: a shorter clip cannot carry a narration line or any real
+# motion, so the chunker never emits one.
+MUSE_VIDEO_MIN_CLIP_SECONDS = 3
+MUSE_VIDEO_MAX_CLIP_SECONDS = 10
+
+
+def _clip_durations_for_scene(total_seconds: int) -> list[int]:
+    """Split one scene's length into muse-video clips of at most 10s.
+
+    Greedy 10s chunks plus the remainder (15s -> [10, 5], 25s -> [10, 10, 5]).
+    A remainder shorter than 3s would be a degenerate clip (12s -> 10 + 2),
+    so the whole scene is rebalanced evenly instead (12s -> [6, 6],
+    21s -> [7, 7, 7]). Every chunk lands inside the 3-10s range, so the
+    prompt text and the duration parameter always agree.
+    """
+    total = max(MUSE_VIDEO_MIN_CLIP_SECONDS, int(total_seconds))
+    if total <= MUSE_VIDEO_MAX_CLIP_SECONDS:
+        return [total]
+    full, remainder = divmod(total, MUSE_VIDEO_MAX_CLIP_SECONDS)
+    if remainder == 0:
+        return [MUSE_VIDEO_MAX_CLIP_SECONDS] * full
+    if remainder >= MUSE_VIDEO_MIN_CLIP_SECONDS:
+        return [MUSE_VIDEO_MAX_CLIP_SECONDS] * full + [remainder]
+    count = full + 1
+    base, extra = divmod(total, count)
+    return [base + (1 if offset < extra else 0) for offset in range(count)]
+
+
+def _scene_clip_seconds(unit: dict[str, Any]) -> int:
+    """Resolve one scene's clip length in seconds for muse-video.
+
+    The planner's per-scene duration wins; otherwise the narration length
+    sets it at ~2.5 words per second of Indonesian speech (25 words fill a
+    10s clip); a scene with neither gets the 3s floor. The result is not
+    clamped to 10s here — _clip_durations_for_scene splits anything longer.
+    """
+    planned = unit.get("duration_seconds")
+    if isinstance(planned, (int, float)) and planned > 0:
+        return max(MUSE_VIDEO_MIN_CLIP_SECONDS, int(round(float(planned))))
+    words = len(_text(unit.get("narration")).split())
+    if words:
+        # ceil(words / 2.5), in integers: ceil(2 * words / 5).
+        return max(MUSE_VIDEO_MIN_CLIP_SECONDS, -(-2 * words // 5))
+    return MUSE_VIDEO_MIN_CLIP_SECONDS
+
+
+_SENTENCE_ENDINGS = ".!?。！？…"
+
+
+def _split_narration(narration: str, durations: list[int]) -> list[str]:
+    """Split one scene's narration across its clips, word by word.
+
+    Each chunk gets the share of words its duration earns, with the cut
+    nudged to the nearest sentence end (within a few words) so a sentence
+    is not torn across clips when it can be kept whole. Concatenating the
+    parts reproduces the original narration word for word.
+    """
+    words = (narration or "").split()
+    if not words:
+        return ["" for _ in durations]
+    total = sum(durations)
+    boundaries: list[int] = []
+    elapsed = 0
+    for seconds in durations[:-1]:
+        elapsed += seconds
+        boundaries.append(round(len(words) * elapsed / total))
+    for position, boundary in enumerate(boundaries):
+        for offset in (0, 1, -1, 2, -2, 3, -3, 4, -4):
+            candidate = boundary + offset
+            if 0 < candidate < len(words) and words[candidate - 1][-1:] in _SENTENCE_ENDINGS:
+                boundaries[position] = candidate
+                break
+    boundaries = sorted(max(0, min(len(words), boundary)) for boundary in boundaries)
+    parts: list[str] = []
+    start = 0
+    for boundary in [*boundaries, len(words)]:
+        parts.append(" ".join(words[start:boundary]))
+        start = boundary
+    return parts
 
 
 def _standard_planner_units(

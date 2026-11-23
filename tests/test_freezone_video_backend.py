@@ -421,7 +421,9 @@ def test_video_model_options_and_resolution_work() -> None:
     assert muse2api_option["providerId"] == "muse2api"
     assert muse2api_option["provider"] == "muse2api"
     assert muse2api_option["minDuration"] is None
-    assert muse2api_option["maxDuration"] is None
+    # muse-video caps at 10s per clip (observed model behaviour); no floor
+    # is stated anywhere, so the minimum stays unbounded.
+    assert muse2api_option["maxDuration"] == 10
     assert "720p" in muse2api_option["resolutionOptions"]
     assert "Seedance1.0 Pro Fast" in labels
     assert "Seedance1.5 Pro" in labels
