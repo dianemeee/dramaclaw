@@ -449,3 +449,114 @@ async def test_generate_muse2api_allows_organization_context(
         )
     assert result.status.value == "done"
     assert result.task_id == "task_egress_2"
+
+
+RELATIVE_MEDIA_URL = "/v1/media/abc123.mp4"
+
+
+async def test_relative_result_url_resolved_to_absolute(
+    _muse2api_env, monkeypatch, tmp_path: Path
+) -> None:
+    """A relative muse2api result URL is joined against the endpoint.
+
+    muse2api returns ``/v1/media/<name>.mp4`` when its public_base is
+    unset; the downloader must be called with the absolute URL, and the
+    Bearer header must be attached (same-host URL).
+    """
+    from novelvideo.utils import media_download
+
+    factory, _calls = _muse2api_env
+    seen: list[dict] = []
+
+    async def _capture_download(url, output_path, headers=None):
+        seen.append({"url": url, "headers": headers})
+        Path(output_path).write_bytes(b"video-bytes")
+
+    monkeypatch.setattr(media_download, "download_to_path", _capture_download)
+    factory.script.extend(
+        [
+            _FakeResponse(200, {"task_id": "task_rel", "status": "queued"}),
+            _FakeResponse(200, {"status": "completed", "url": RELATIVE_MEDIA_URL}),
+        ]
+    )
+    output = tmp_path / "video.mp4"
+    result = await _generator().generate(
+        image_path="https://example.com/frame.jpg",
+        prompt="pan left",
+        output_path=str(output),
+        duration=5,
+        poll_interval=0,
+    )
+
+    assert result.status.value == "done"
+    assert result.video_url == MEDIA_URL
+    assert seen == [
+        {
+            "url": MEDIA_URL,
+            "headers": {"Authorization": "Bearer test-muse2api-key"},
+        }
+    ]
+
+
+async def test_absolute_result_url_passes_through_unchanged(
+    _muse2api_env, monkeypatch, tmp_path: Path
+) -> None:
+    """An already-absolute result URL is downloaded exactly as returned."""
+    from novelvideo.utils import media_download
+
+    factory, _calls = _muse2api_env
+    seen: list[dict] = []
+
+    async def _capture_download(url, output_path, headers=None):
+        seen.append({"url": url, "headers": headers})
+        Path(output_path).write_bytes(b"video-bytes")
+
+    monkeypatch.setattr(media_download, "download_to_path", _capture_download)
+    factory.script.extend(
+        [
+            _FakeResponse(200, {"task_id": "task_abs", "status": "queued"}),
+            _FakeResponse(200, {"status": "completed", "url": MEDIA_URL}),
+        ]
+    )
+    result = await _generator().generate(
+        image_path="https://example.com/frame.jpg",
+        prompt="pan left",
+        output_path=str(tmp_path / "video.mp4"),
+        duration=5,
+        poll_interval=0,
+    )
+
+    assert result.status.value == "done"
+    assert result.video_url == MEDIA_URL
+    assert seen[0]["url"] == MEDIA_URL
+
+
+async def test_failed_download_error_names_the_url(
+    _muse2api_env, monkeypatch, tmp_path: Path
+) -> None:
+    """A download failure names the (resolved) URL so it is diagnosable."""
+    from novelvideo.utils import media_download
+
+    factory, _calls = _muse2api_env
+
+    async def _failing_download(url, output_path, headers=None):
+        raise RuntimeError("boom")
+
+    monkeypatch.setattr(media_download, "download_to_path", _failing_download)
+    factory.script.extend(
+        [
+            _FakeResponse(200, {"task_id": "task_dl_fail", "status": "queued"}),
+            _FakeResponse(200, {"status": "completed", "url": RELATIVE_MEDIA_URL}),
+        ]
+    )
+    result = await _generator().generate(
+        image_path="https://example.com/frame.jpg",
+        prompt="pan left",
+        output_path=str(tmp_path / "video.mp4"),
+        duration=5,
+        poll_interval=0,
+    )
+
+    assert result.status.value == "failed"
+    assert MEDIA_URL in (result.error or "")
+    assert "Download failed" in (result.error or "")

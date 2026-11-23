@@ -1518,18 +1518,38 @@ class Muse2ApiVideoGenerator(VideoGeneratorBase):
                 except Exception:
                     return resp.status, {"_raw": await resp.text()}
 
+    def _resolve_result_url(self, result_url: str) -> str:
+        """Resolve a relative muse2api result URL against this generator's endpoint.
+
+        muse2api builds the result URL with ``media_url()``: absolute only
+        when its public_base is set, otherwise a relative path such as
+        ``/v1/media/<name>.mp4`` — which the downloader cannot fetch as-is
+        (aiohttp raises InvalidUrlClientError, surfacing as
+        VIDEO_DOWNLOAD_FAILED). Already-absolute URLs pass through unchanged.
+        """
+        value = str(result_url or "").strip()
+        if not value:
+            return value
+        parsed = urllib.parse.urlsplit(value)
+        if parsed.scheme or parsed.netloc:
+            return value
+        if not value.startswith("/"):
+            return value
+        return urllib.parse.urljoin(f"{self.endpoint}/", value)
+
     async def _download_video(self, url: str, output_path: str) -> VideoDeliveryReceipt:
         from novelvideo.utils.media_download import download_to_path
 
-        # muse2api result URLs (e.g. /v1/media/<name>.mp4) live on the
-        # muse2api host itself and require the token; public result URLs
-        # must never receive the credential.
+        # Resolve first: a relative result URL must become absolute before
+        # the host check below, so it gets the token like any same-host
+        # URL. Public result URLs must never receive the credential.
+        resolved = self._resolve_result_url(url)
         headers: dict[str, str] | None = None
         if self.api_key:
             endpoint_host = urllib.parse.urlsplit(self.endpoint).hostname
-            if endpoint_host and urllib.parse.urlsplit(url).hostname == endpoint_host:
+            if endpoint_host and urllib.parse.urlsplit(resolved).hostname == endpoint_host:
                 headers = {"Authorization": f"Bearer {self.api_key}"}
-        return await download_to_path(url, output_path, headers=headers)
+        return await download_to_path(resolved, output_path, headers=headers)
 
     @staticmethod
     def _extract_video_url(task: dict) -> str:
@@ -1725,15 +1745,15 @@ class Muse2ApiVideoGenerator(VideoGeneratorBase):
             progress(0.2 + (poll_count / max(max_polls, 1)) * 0.7)
 
             if status_str in {"completed", "succeeded", "success", "done"}:
-                video_url = self._extract_video_url(data)
+                video_url = self._resolve_result_url(self._extract_video_url(data))
                 if not video_url:
                     return await fail("No video URL in response", task_id)
-                log("视频生成完成，正在下载...")
+                log(f"视频生成完成，正在下载 {video_url}...")
                 progress(0.9)
                 try:
                     await self._download_video(video_url, output_path)
                 except Exception as exc:
-                    return await fail(f"Download failed: {exc}", task_id)
+                    return await fail(f"Download failed ({video_url}): {exc}", task_id)
                 if reservation_id:
                     await _confirm_video_model_call(
                         model=self.model,
