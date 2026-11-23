@@ -80,14 +80,73 @@ describe("referenceSend", () => {
     expect(message).toContain("My notes: My story is about the eviction dispute.");
   });
 
-  it("extra notes travel under the matching part in the combined message", () => {
+  it("premise goes first as its own section, verbatim and exactly once", () => {
+    const message = buildCombinedDirectorMessage(
+      articlePart(),
+      videoPart(),
+      "en",
+    );
+    expect(message).toContain("MY SCRIPT / PREMISE:");
+    expect(message).toContain("My story is about the eviction dispute.");
+    expect(message.indexOf("MY SCRIPT / PREMISE:")).toBeLessThan(
+      message.indexOf("ARTICLE ANALYSIS"),
+    );
+    // The premise is not repeated as a trailing note under the article part.
+    expect(message).not.toContain(
+      "My notes: My story is about the eviction dispute.",
+    );
+    expect(
+      message.split("My story is about the eviction dispute.").length - 1,
+    ).toBe(1);
+  });
+
+  it("video notes stay under the video part, never promoted to the premise", () => {
     const message = buildCombinedDirectorMessage(
       articlePart(),
       videoPart({ extraNotes: "Only the night scenes." }),
       "en",
     );
-    expect(message).toContain("My notes: My story is about the eviction dispute.");
+    expect(message).toContain("MY SCRIPT / PREMISE:");
     expect(message).toContain("My notes: Only the night scenes.");
+    expect(message.indexOf("My notes: Only the night scenes.")).toBeGreaterThan(
+      message.indexOf("VIDEO ANALYSIS"),
+    );
+  });
+
+  it("premise already quoted verbatim in the analysis is not repeated", () => {
+    const premise = "My story is about the eviction dispute.";
+    const message = buildCombinedDirectorMessage(
+      articlePart({
+        analysis: `ARTICLE ANALYSIS: the analyst notes "${premise}" and the villagers face eviction.`,
+      }),
+      videoPart(),
+      "en",
+    );
+    expect(message).not.toContain("MY SCRIPT / PREMISE:");
+    expect(message.split(premise).length - 1).toBe(1);
+  });
+
+  it("a short premise that merely appears in the analysis still gets its own section", () => {
+    const message = buildCombinedDirectorMessage(
+      articlePart({
+        extraNotes: "Mei",
+        analysis: "ARTICLE ANALYSIS: Mei faces eviction over a land deed.",
+      }),
+      videoPart(),
+      "en",
+    );
+    expect(message).toContain("MY SCRIPT / PREMISE:");
+    expect(message).toContain("\nMei\n");
+  });
+
+  it("premise section renders in Indonesian and Chinese", () => {
+    const id = buildCombinedDirectorMessage(articlePart(), videoPart(), "id");
+    expect(id).toContain("NASKAH / PREMIS SAYA:");
+    expect(id).toContain("Kembangkan cerita INI");
+
+    const zh = buildCombinedDirectorMessage(articlePart(), videoPart(), "zh");
+    expect(zh).toContain("我的剧本 / 前提：");
+    expect(zh).toContain("请发展这个故事");
   });
 
   it("renders the guard in Indonesian and Chinese", () => {
