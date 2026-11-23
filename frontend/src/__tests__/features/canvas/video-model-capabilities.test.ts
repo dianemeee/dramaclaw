@@ -142,7 +142,7 @@ describe("video model family detection", () => {
     expect(isMuse2ApiDirectVideoModel("MUSE2API_MUSE-VIDEO")).toBe(true);
     // The gateway row (newapi_muse-video / muse-video) must keep the
     // previous-shot tail frame — it is a different backend.
-    for (const id of ["muse-video", "newapi_muse-video", SEEDANCE2_FAST, HAPPYHORSE, null, undefined, ""]) {
+    for (const id of ["muse-video", "newapi_muse-video", SEEDANCE2_FAST, HAPPYHORSE, null, undefined, "", 123, {}]) {
       expect(isMuse2ApiDirectVideoModel(id)).toBe(false);
     }
   });

@@ -44,8 +44,12 @@ export function isGrokVideoChannelModel(modelId: string | null | undefined): boo
  * `muse-video` row, it must never receive the auto-attached previous-shot
  * tail frame — the run would attach the frame and then refuse itself.
  */
-export function isMuse2ApiDirectVideoModel(modelId: string | null | undefined): boolean {
-  return normalizeVideoModelId(modelId) === "muse2apimusevideo";
+export function isMuse2ApiDirectVideoModel(modelId: unknown): boolean {
+  // Canvas node data is untyped (target.data.model is `unknown`), so the
+  // helper takes `unknown` and only a string id can match. `tsc -b` (the
+  // `pnpm build` gate) rejects passing `unknown` to a `string | null |
+  // undefined` parameter — narrowing here, not at the call sites.
+  return typeof modelId === "string" && normalizeVideoModelId(modelId) === "muse2apimusevideo";
 }
 
 // Seedance 1 全系列（1.0 Pro Fast / 1.5 Pro / …）：版本号 `1.x` → `1x`，匹配
