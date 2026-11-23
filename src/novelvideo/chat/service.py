@@ -2835,6 +2835,7 @@ async def _fallback_display_tool_ui_specs(
     *,
     token: str,
     project_dir: str | Path | None = None,
+    language: str | None = None,
 ) -> list[dict[str, Any]]:
     return await display_fallback._fallback_display_tool_ui_specs(
         username,
@@ -2844,6 +2845,7 @@ async def _fallback_display_tool_ui_specs(
         token=token,
         _backend_api_get=_backend_api_get,
         project_dir=project_dir,
+        language=language,
     )
 
 
@@ -5240,6 +5242,7 @@ async def _stream_assistant_reply_hermes(
                                     tool_args,
                                     token=fallback_token,
                                     project_dir=project_dir,
+                                    language=_director_language_from_context(surface_context),
                                 )
                             )
                 if event.name:
@@ -5324,6 +5327,7 @@ async def _stream_assistant_reply_hermes(
                         tool_args,
                         token=fallback_token,
                         project_dir=project_dir,
+                        language=_director_language_from_context(surface_context),
                     )
                 )
         result_message = await persist_partial_reply()

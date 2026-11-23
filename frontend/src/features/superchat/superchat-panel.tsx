@@ -3581,7 +3581,7 @@ function CanvasApprovalVideoConfigChip({
         ref={triggerRef}
         type="button"
         disabled={disabled}
-        aria-label={`视频参数：${params.aspectRatio} · ${params.quality} · ${params.durationSec}s · ${audioLabel}`}
+        aria-label={t("freezone.chat.approval.videoParamsAria", { params: `${params.aspectRatio} · ${params.quality} · ${params.durationSec}s · ${audioLabel}` })}
         onClick={() => setIsOpen((prev) => !prev)}
         className="inline-flex h-6 max-w-full items-center gap-1 rounded-full bg-transparent px-0 text-[11px] font-medium text-foreground outline-none transition-colors hover:text-foreground disabled:opacity-60"
       >
@@ -3605,7 +3605,7 @@ function CanvasApprovalVideoConfigChip({
           onPointerDown={(event) => event.stopPropagation()}
           onClick={(event) => event.stopPropagation()}
         >
-          <div className="mb-1.5 text-[11px] font-medium text-muted-foreground">比例</div>
+          <div className="mb-1.5 text-[11px] font-medium text-muted-foreground">{t("freezone.chat.approval.videoRatioLabel")}</div>
           <div className="mb-3 grid grid-cols-4 gap-1.5">
             {aspectOptions.map((ratio) => {
               const isActive = params.aspectRatio === ratio;
@@ -3627,7 +3627,7 @@ function CanvasApprovalVideoConfigChip({
             })}
           </div>
 
-          <div className="mb-1.5 text-[11px] font-medium text-muted-foreground">清晰度</div>
+          <div className="mb-1.5 text-[11px] font-medium text-muted-foreground">{t("freezone.chat.approval.videoQualityLabel")}</div>
           <div className="mb-3 grid grid-cols-3 gap-1.5">
             {qualityOptions.map((quality) => {
               const isActive = params.quality === quality;
@@ -3650,11 +3650,11 @@ function CanvasApprovalVideoConfigChip({
           </div>
 
           <div className="mb-1.5 flex items-center justify-between text-[11px] font-medium text-muted-foreground">
-            <span>视频时长</span>
+            <span>{t("freezone.chat.approval.videoDurationLabel")}</span>
             <span className="text-foreground">{params.durationSec}s</span>
           </div>
           <input
-            aria-label="视频时长"
+            aria-label={t("freezone.chat.approval.videoDurationLabel")}
             type="range"
             min={durationBounds.min}
             max={durationBounds.max}
@@ -3942,31 +3942,31 @@ function CanvasCommandApprovalCard({
               ? t("freezone.chat.canvasExecuting")
               : approval.requiresUserChoice
               ? t("freezone.chat.audioApproval.chooseVoiceTitle")
-              : "待确认的画布操作"}
+              : t("freezone.chat.approval.pendingTitle")}
           </div>
           <p className="mt-1 text-xs leading-5 text-muted-foreground">
             {isExecuting
               ? t("freezone.chat.canvasConfirmedExecuting")
               : approval.requiresUserChoice
               ? t("freezone.chat.audioApproval.chooseVoiceDescription")
-              : `Agent 计划执行 ${approval.commandCount} 个操作，确认后才会应用到画布。`}
+              : t("freezone.chat.approval.planDescription", { count: approval.commandCount })}
           </p>
         </div>
-        <Badge variant="outline" className="rounded-md uppercase">{isExecuting ? "执行中" : "确认"}</Badge>
+        <Badge variant="outline" className="rounded-md uppercase">{isExecuting ? t("freezone.chat.approval.executingBadge") : t("freezone.chat.approval.confirmBadge")}</Badge>
       </div>
       <CanvasCommandPlanList plans={approval.plans} />
       {unsupportedHumanReview.length > 0 && (
         <div role="status" className="border-t border-border px-3 py-2 text-xs text-foreground">
           <p>{unsupportedReviewMode
-            ? "当前文生视频模式不支持真人验证，请关闭真人验证后继续，或取消并改用带素材的视频模式。尚未提交视频生成任务。"
-            : "当前模型不支持真人验证，请选择后再继续。尚未提交视频生成任务。"}</p>
+            ? t("freezone.chat.approval.humanReviewUnsupportedMode")
+            : t("freezone.chat.approval.humanReviewUnsupportedModel")}</p>
           <div className="mt-2 flex flex-wrap gap-2">
             <CanvasApprovalImageParamSelect
-              ariaLabel="切换到支持真人验证的模型"
+              ariaLabel={t("freezone.chat.approval.switchModelAria")}
               disabled={isExecuting || videoModels.isLoading || unsupportedReviewMode}
               value=""
               options={[
-                { value: "", label: "切换模型" },
+                { value: "", label: t("freezone.chat.approval.switchModel") },
                 ...videoModels.models.filter((model) => model.humanReview === true)
                   .map((model) => ({ value: model.id, label: model.label ?? model.id })),
               ]}
@@ -3980,35 +3980,35 @@ function CanvasCommandApprovalCard({
             <Button size="xs" variant="outline" disabled={isExecuting} onClick={() => {
               setHumanReviewEnabled(false);
               setVideoParams((current) => current.map((params) => ({ ...params, humanReview: false })));
-            }}>关闭本次视频的真人验证</Button>
+            }}>{t("freezone.chat.approval.disableHumanReview")}</Button>
             <Button size="xs" variant="outline" disabled={isExecuting}
-              onClick={() => onCancel(approval)}>取消本次生成</Button>
+              onClick={() => onCancel(approval)}>{t("freezone.chat.approval.cancelGeneration")}</Button>
           </div>
-          <p className="mt-1 text-muted-foreground">关闭后仍可能被安全审核拒绝；选择后点击确认执行。</p>
+          <p className="mt-1 text-muted-foreground">{t("freezone.chat.approval.humanReviewStillRejected")}</p>
         </div>
       )}
       {(imageParams.length > 0 || videoParams.length > 0 || audioParams.length > 0) && (
         <div className="flex items-center gap-2 border-t border-amber-400/10 bg-white/[0.025] px-3 py-1.5 text-[11px] font-medium text-foreground/90">
           <SlidersHorizontal className="size-3.5 text-muted-foreground" />
-          生成设置
+          {t("freezone.chat.approval.generationSettings")}
           <span className="ml-auto text-[10px] font-normal text-muted-foreground">
-            {videoParams.some((params) => params.storySegmentLabels?.length) ? "影游参数按镜头规划" : "确认后统一写入节点"}
+            {videoParams.some((params) => params.storySegmentLabels?.length) ? t("freezone.chat.approval.storyParamsByShot") : t("freezone.chat.approval.writeAfterConfirm")}
           </span>
         </div>
       )}
       {humanReviewNodeIds.length > 0 && (
         <div className="flex items-center justify-between gap-3 border-t border-amber-400/10 bg-amber-400/10 px-3 py-2">
           <div className="min-w-0">
-            <div className="text-xs font-medium text-foreground">输入图片可能包含真人</div>
+            <div className="text-xs font-medium text-foreground">{t("freezone.chat.approval.humanReviewTitle")}</div>
             <div className="mt-0.5 text-[11px] leading-4 text-muted-foreground">
-              检测到 {humanReviewNodeIds.length} 个图片转视频节点，确认后将在模型支持时开启真人审核。
+              {t("freezone.chat.approval.humanReviewDescription", { count: humanReviewNodeIds.length })}
             </div>
           </div>
           <button
             type="button"
             role="switch"
             aria-checked={humanReviewEnabled}
-            aria-label="真人审核"
+            aria-label={t("freezone.chat.approval.humanReviewAria")}
             disabled={isExecuting}
             onClick={() => setHumanReviewEnabled((enabled) => !enabled)}
             className={cn(
@@ -4042,12 +4042,12 @@ function CanvasCommandApprovalCard({
           <div key={`${imageParam.nodeId}:${imageParam.model}`} className="border-t border-amber-400/10 px-3 py-1.5">
             <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
             <span className="inline-flex items-center gap-1 text-[11px] font-medium text-foreground">
-              <Image className="size-3" />图片
+              <Image className="size-3" />{t("freezone.chat.approval.imageLabel")}
               {(imageParam.nodeIds?.length ?? 1) > 1 ? ` ×${imageParam.nodeIds?.length}` : ""}
             </span>
             <span className="h-4 w-px bg-white/[0.12]" />
             <CanvasApprovalImageParamSelect
-              ariaLabel="图片模型"
+              ariaLabel={t("freezone.chat.approval.imageModelAria")}
               disabled={isExecuting}
               value={imageParam.model}
               onChange={(value) => updateImageParams(imageParamIndex, { model: value })}
@@ -4055,18 +4055,18 @@ function CanvasCommandApprovalCard({
             />
             <span className="h-4 w-px bg-white/[0.12]" />
             <CanvasApprovalImageParamSelect
-              ariaLabel="图片比例"
+              ariaLabel={t("freezone.chat.approval.imageRatioAria")}
               disabled={isExecuting}
               value={imageParam.aspectRatio}
               onChange={(value) => updateImageParams(imageParamIndex, { aspectRatio: value })}
               options={imageAspectOptions.map((option) => ({
                 value: option,
-                label: option === "auto" ? "自动比例" : option,
+                label: option === "auto" ? t("freezone.chat.generationParams.autoRatio") : option,
               }))}
             />
             <span className="h-4 w-px bg-white/[0.12]" />
             <CanvasApprovalImageParamSelect
-              ariaLabel="图片分辨率"
+              ariaLabel={t("freezone.chat.approval.imageResolutionAria")}
               disabled={isExecuting}
               value={imageParam.size}
               onChange={(value) => updateImageParams(imageParamIndex, { size: value })}
@@ -4086,11 +4086,11 @@ function CanvasCommandApprovalCard({
             ) : null}
             <span className="h-4 w-px bg-white/[0.12]" />
             <CanvasApprovalImageParamSelect
-              ariaLabel="图片数量"
+              ariaLabel={t("freezone.chat.approval.imageCountAria")}
               disabled={isExecuting}
               value={String(imageParam.count)}
               onChange={(value) => updateImageParams(imageParamIndex, { count: Number(value) })}
-              options={CANVAS_APPROVAL_IMAGE_COUNT_OPTIONS.map((option) => ({ value: String(option), label: `${option} 张` }))}
+              options={CANVAS_APPROVAL_IMAGE_COUNT_OPTIONS.map((option) => ({ value: String(option), label: t("freezone.chat.approval.imageCountUnit", { count: option }) }))}
             />
             </div>
           </div>
@@ -4106,16 +4106,16 @@ function CanvasCommandApprovalCard({
           VIDEO_GENERATION_ASPECT_RATIOS,
         );
         const storySegmentLabels = videoParam.storySegmentLabels ?? [];
-        const storySegmentSummary = storySegmentLabels.join("、");
+        const storySegmentSummary = storySegmentLabels.join(isEnglishUi() ? ", " : "、");
         const continuityLabel = videoParam.continuityMode
           ? t(`canvas.story.continuity.${videoParam.continuityMode}`)
           : null;
         const storyDurationLabel = Number.isFinite(videoParam.durationSec)
           ? `${videoParam.durationSec}s`
-          : "时长未规划";
+          : t("freezone.chat.approval.durationUnplanned");
         const storyParamLabel = [
           videoParam.model, videoParam.aspectRatio, videoParam.quality,
-          storyDurationLabel, `${videoParam.count} 个`,
+          storyDurationLabel, t("freezone.chat.approval.videoCountUnit", { count: videoParam.count }),
         ].filter(Boolean).join(" · ");
         return (
         <div key={`${videoParam.nodeId}:${videoParam.model}`} className="border-t border-amber-400/10 px-3 py-1">
@@ -4136,20 +4136,20 @@ function CanvasCommandApprovalCard({
           )}
           <div className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5">
             <span className="inline-flex items-center gap-1 text-[11px] font-medium text-foreground">
-              <Play className="size-3" />视频
+              <Play className="size-3" />{t("freezone.chat.approval.videoLabel")}
               {(videoParam.nodeIds?.length ?? 1) > 1 ? ` ×${videoParam.nodeIds?.length}` : ""}
             </span>
             <span className="h-3.5 w-px bg-white/[0.12]" />
             {storySegmentLabels.length > 0 ? (
               <span
                 className="text-[11px] text-foreground/90"
-                aria-label={`镜头参数：${storyParamLabel}`}
+                aria-label={t("freezone.chat.approval.shotParamsAria", { params: storyParamLabel })}
               >
                 {storyParamLabel}
               </span>
             ) : (<>
             <CanvasApprovalImageParamSelect
-              ariaLabel="视频模型"
+              ariaLabel={t("freezone.chat.approval.videoModelAria")}
               disabled={isExecuting}
               value={videoParam.model}
               onChange={(value) => updateVideoParams(videoParamIndex, { model: value })}
@@ -4167,11 +4167,11 @@ function CanvasCommandApprovalCard({
             />
             <span className="h-3.5 w-px bg-white/[0.12]" />
             <CanvasApprovalImageParamSelect
-              ariaLabel="视频数量"
+              ariaLabel={t("freezone.chat.approval.videoCountAria")}
               disabled={isExecuting}
               value={String(videoParam.count)}
               onChange={(value) => updateVideoParams(videoParamIndex, { count: Number(value) as 1 | 2 | 4 })}
-              options={CANVAS_APPROVAL_VIDEO_COUNT_OPTIONS.map((option) => ({ value: String(option), label: `${option} 个` }))}
+              options={CANVAS_APPROVAL_VIDEO_COUNT_OPTIONS.map((option) => ({ value: String(option), label: t("freezone.chat.approval.videoCountUnit", { count: option }) }))}
             />
             </>)}
           </div>
@@ -4182,7 +4182,7 @@ function CanvasCommandApprovalCard({
         <div className="border-t border-amber-400/10 px-3 py-1.5">
           <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
             <CanvasApprovalImageParamSelect
-              ariaLabel="高清分辨率"
+              ariaLabel={t("freezone.chat.approval.upscaleResolutionAria")}
               disabled={isExecuting}
               value={videoUpscaleParams.resolution}
               onChange={(value) => updateVideoUpscaleParams({
@@ -4245,10 +4245,10 @@ function CanvasCommandApprovalCard({
       <div className="flex flex-wrap items-center justify-end gap-2 border-t border-amber-400/15 px-3 py-2.5">
         {remaining !== null && !isExecuting ? (
           <span className="mr-auto text-[11px] leading-4 text-amber-500">
-            {remaining}s 后自动取消
+            {t("freezone.chat.approval.autoCancelIn", { seconds: remaining })}
           </span>
         ) : null}
-        <Button size="xs" variant="outline" disabled={isExecuting} onClick={() => onCancel(approval)}>取消</Button>
+        <Button size="xs" variant="outline" disabled={isExecuting} onClick={() => onCancel(approval)}>{t("freezone.chat.canvasConfirmation.refuse")}</Button>
         <Button
           size="xs"
           disabled={isExecuting || (videoParams.length > 0 && videoModels.isLoading) || unsupportedHumanReview.length > 0}
@@ -4339,7 +4339,7 @@ function pendingCanvasWorkflowReceipts(byMessageId: Record<string, CanvasCommand
 export const pendingCanvasWorkflowReceiptsForTest = pendingCanvasWorkflowReceipts;
 
 function canvasCommandFeedbackIsInvalidCommand(feedback: CanvasCommandFeedback): boolean {
-  return (feedback.commandResults ?? []).some((step) => step.label === "画布命令无效");
+  return (feedback.commandResults ?? []).some((step) => step.label === "画布命令无效" || step.label === "Canvas command invalid");
 }
 
 function canvasCommandFeedbackIsUserCancelled(feedback: CanvasCommandFeedback): boolean {
@@ -4385,8 +4385,8 @@ function canvasCommandFeedbackCompactTitle(feedback: CanvasCommandFeedback, t: T
   if (canvasCommandFeedbackHasUnverified(feedback)) return t("freezone.chat.workflowResultUnverifiedLabel");
   const firstFailedStep = (feedback.commandResults ?? []).find((step) => step.status !== "success");
   const firstPlan = feedback.plans?.[0];
-  if (canvasCommandFeedbackIsTimeoutCancelled(feedback)) return "画布操作已过期";
-  if (firstFailedStep?.label === "已取消" || canvasCommandFeedbackIsUserCancelled(feedback)) return "画布操作已取消";
+  if (canvasCommandFeedbackIsTimeoutCancelled(feedback)) return t("freezone.chat.canvasOperation.expired");
+  if (firstFailedStep?.label === "已取消" || firstFailedStep?.label === "Cancelled" || canvasCommandFeedbackIsUserCancelled(feedback)) return t("freezone.chat.canvasOperation.cancelled");
   if (canvasCommandFeedbackHasPending(feedback)) {
     if (canvasCommandFeedbackBackgroundRunning(feedback)) {
       return t("freezone.chat.backgroundGenerationRunningLabel");
@@ -4395,17 +4395,18 @@ function canvasCommandFeedbackCompactTitle(feedback: CanvasCommandFeedback, t: T
       ? t("freezone.chat.workflowReconciliationPendingLabel")
       : t("freezone.chat.workflowOutputSyncPendingLabel");
   }
-  if (firstPlan?.type === "run_node_action" && firstPlan.label.includes("生成图片")) return "生成图片失败";
-  if (firstPlan?.type === "run_node_action" && firstPlan.label.includes("生成视频")) return "生成视频失败";
+  if (firstPlan?.type === "run_node_action" && firstPlan.action === "generate_image") return t("freezone.chat.canvasOperation.imageGenerationFailed");
+  if (firstPlan?.type === "run_node_action" && firstPlan.action === "generate_video") return t("freezone.chat.canvasOperation.videoGenerationFailed");
   if (firstFailedStep?.label) return firstFailedStep.label;
-  return "画布操作失败";
+  return t("freezone.chat.canvasOperation.failed");
 }
 
 export const canvasCommandFeedbackCompactTitleForTest = canvasCommandFeedbackCompactTitle;
 
-function expiredCanvasApprovalFeedback(approval: PendingCanvasCommandApproval): CanvasCommandFeedback | null {
+function expiredCanvasApprovalFeedback(approval: PendingCanvasCommandApproval, t?: TFunction): CanvasCommandFeedback | null {
   if (!approval.autoExpires || !approval.expiresAt || approval.expiresAt > Date.now()) return null;
-  const error = "画布操作等待超时，已自动取消";
+  const tr = clarificationText(t);
+  const error = tr("freezone.chat.canvasOperation.autoCancelled", { defaultValue: "画布操作等待超时，已自动取消" });
   return {
     applied: 0,
     openedUiActions: 0,
@@ -4415,7 +4416,7 @@ function expiredCanvasApprovalFeedback(approval: PendingCanvasCommandApproval): 
         commandIndex: -1,
         type: "validate",
         status: "error",
-        label: "已取消",
+        label: tr("freezone.chat.canvasOperation.cancelledLabel", { defaultValue: "已取消" }),
         error,
       },
     ],
@@ -4493,7 +4494,7 @@ function CanvasCommandFeedbackCard({
                 : "text-destructive/90 hover:text-destructive",
         )}
       >
-        <span className="truncate">{collapseSuccessfulDetails ? `画布执行完成，已执行 ${successfulCount} 项` : compactTitle}</span>
+        <span className="truncate">{collapseSuccessfulDetails ? t("freezone.chat.canvasOperation.executionComplete", { count: successfulCount }) : compactTitle}</span>
         <ChevronRight className="size-3.5 shrink-0" />
       </button>
     );
@@ -4516,11 +4517,11 @@ function CanvasCommandFeedbackCard({
     >
       <div className="flex items-center gap-2 border-b border-white/[0.06] px-3 py-2 text-foreground/90">
         <Wrench className="size-3.5" />
-        <span className="font-medium">画布执行</span>
+        <span className="font-medium">{t("freezone.chat.canvasOperation.executionTitle")}</span>
         {(initiallyCompact || collapseSuccessfulDetails) && (
-          <button type="button" onClick={() => setExpanded(false)} className="ml-auto rounded-md px-1.5 py-0.5 text-[11px] text-muted-foreground hover:bg-white/[0.06] hover:text-foreground">收起</button>
+          <button type="button" onClick={() => setExpanded(false)} className="ml-auto rounded-md px-1.5 py-0.5 text-[11px] text-muted-foreground hover:bg-white/[0.06] hover:text-foreground">{t("freezone.chat.canvasOperation.collapse")}</button>
         )}
-        {successfulCount > 0 && !pending && <span className={cn("text-[11px] text-muted-foreground", !initiallyCompact && "ml-auto")}>已执行 {successfulCount} 项</span>}
+        {successfulCount > 0 && !pending && <span className={cn("text-[11px] text-muted-foreground", !initiallyCompact && "ml-auto")}>{t("freezone.chat.canvasOperation.appliedCount", { count: successfulCount })}</span>}
       </div>
       {expanded && <CanvasCommandPlanList plans={feedback.plans} />}
       <div className="space-y-1 px-3 py-2">
@@ -4551,9 +4552,9 @@ function CanvasCommandFeedbackCard({
                 {ok && <HtmlArtifactResultCard output={step.output}/>}
                 {(step.createdNodeId || step.nodeId || step.action || step.error) && (
                   <div className="mt-0.5 space-y-0.5 break-words text-[11px] text-muted-foreground">
-                    {step.createdNodeId && <div>新节点：{step.createdNodeId}</div>}
-                    {!step.createdNodeId && step.nodeId && <div>节点：{step.nodeId}</div>}
-                    {step.action && <div>动作：{step.action}</div>}
+                    {step.createdNodeId && <div>{t("freezone.chat.canvasOperation.newNode")}{step.createdNodeId}</div>}
+                    {!step.createdNodeId && step.nodeId && <div>{t("freezone.chat.canvasOperation.nodeLabel")}{step.nodeId}</div>}
+                    {step.action && <div>{t("freezone.chat.canvasOperation.actionLabel")}{step.action}</div>}
                     {step.error && (ok || step.status === "error") && <div className={invalidCommand || warningFailure ? "text-amber-200/80" : "text-destructive"}>{step.error}</div>}
                   </div>
                 )}
@@ -4564,7 +4565,7 @@ function CanvasCommandFeedbackCard({
         {steps.length === 0 && successfulCount > 0 && (
           <div className="flex items-center gap-2 text-foreground/90">
             <CheckCircle2 className="size-3.5 text-emerald-400" />
-            <span>已应用 {successfulCount} 个画布操作</span>
+            <span>{t("freezone.chat.canvasOperation.appliedOperations", { count: successfulCount })}</span>
           </div>
         )}
         {feedback.errors.length > 0 && steps.length === 0 && !userFailureMessage && (
@@ -4580,7 +4581,7 @@ function CanvasCommandFeedbackCard({
             onClick={() => onRetry(feedback)}
           >
             <RefreshCw className="mr-1.5 size-3.5 text-amber-300" />
-            重新执行
+            {t("freezone.chat.canvasOperation.retry")}
           </Button>
         </div>
       ) : null}
@@ -4900,6 +4901,13 @@ function clarificationQuestionsWithLiveModelCatalogs(
   );
   return questions.map((question) => {
     const questionId = normalizedClarificationId(question.id);
+    // Known generation questions (image/video model, ratio, resolution,
+    // duration, audio...) get a stable localized title; anything else keeps
+    // the director-authored title via defaultValue.
+    const localizedTitle = t?.(
+      `freezone.chat.generationParams.questionTitle.${questionId}`,
+      { defaultValue: question.title ?? questionId },
+    ) ?? question.title ?? questionId;
     const source = question.options_source ?? CLARIFICATION_SOURCE_BY_QUESTION_ID[questionId];
     const existingOptions = question.options ?? [];
     const normalized = (value: unknown) => String(value ?? "").trim().toLowerCase();
@@ -4908,6 +4916,7 @@ function clarificationQuestionsWithLiveModelCatalogs(
         clarificationVideoModelSupportsRequiredModes(model, question.required_video_modes));
       return {
         ...question,
+        title: localizedTitle,
         options_source: source,
         allow_custom: false,
         options: models.map((model) => {
@@ -4932,14 +4941,14 @@ function clarificationQuestionsWithLiveModelCatalogs(
     if (source?.startsWith("selected_image_model_") && !selectedImageModel) {
       return hasImageModelQuestion || imageModels.length === 0
         || Boolean(clarificationSelectedValue(questions, answers, "image_model"))
-        ? { ...question, options_source: source, options: [], allow_custom: false }
-        : question;
+        ? { ...question, title: localizedTitle, options_source: source, options: [], allow_custom: false }
+        : { ...question, title: localizedTitle };
     }
     if (source?.startsWith("selected_video_model_") && !selectedVideoModel) {
       return hasVideoModelQuestion || videoModels.length === 0
         || Boolean(clarificationSelectedValue(questions, answers, "video_model"))
-        ? { ...question, options_source: source, options: [], allow_custom: false }
-        : question;
+        ? { ...question, title: localizedTitle, options_source: source, options: [], allow_custom: false }
+        : { ...question, title: localizedTitle };
     }
     if (source === "selected_image_model_ratios") {
       values = clarificationCapabilityOptions(
@@ -5004,9 +5013,10 @@ function clarificationQuestionsWithLiveModelCatalogs(
         count: Number(value),
       }) ?? `${value} videos`);
     }
-    if (values === null) return question;
+    if (values === null) return { ...question, title: localizedTitle };
     return {
       ...question,
+      title: localizedTitle,
       options_source: source,
       options: clarificationOptions(values, existingOptions, labelFor),
       allow_custom: false,
@@ -5679,6 +5689,47 @@ const skillStudioDraftFieldLabels = {
 
 export const skillStudioDraftFieldLabelsForTest = skillStudioDraftFieldLabels;
 
+const skillStudioDraftFieldLabelsEn: typeof skillStudioDraftFieldLabels = {
+  skill: {
+    id: "ID",
+    category: "Category",
+    description: "Description",
+    keywords: "Trigger keywords",
+    inputParameters: "Pre-start options",
+    node_scopes: "Node types",
+    metaPlanningHints: "Planner hints",
+    promptStyleGuide: "Style guide",
+    behaviorRules: "Behavior rules",
+    passingScore: "Passing score",
+    domainRules: "Domain rules",
+    ratingBands: "Rating bands",
+    visualReviewItems: "Visual review items",
+    textReviewItems: "Text review items",
+  },
+  recipe: {
+    id: "ID",
+    name: "Name",
+    output_kind: "Generation type",
+    action_keys: "Action types",
+    system_prompt: "System Prompt",
+    must_have_items: "Required items",
+    planning_prompt: "Planner prompt",
+    result_summary: "Output summary",
+    requires_source_media: "Requires upstream multimodal input",
+    enabled: "Enabled",
+    force_enhancement: "Force enhancement",
+    skip_detail_check: "Skip detail check",
+  },
+};
+
+function skillStudioDraftFieldLabel(
+  kind: keyof typeof skillStudioDraftFieldLabels,
+  field: string,
+): string {
+  const table = isEnglishUi() ? skillStudioDraftFieldLabelsEn : skillStudioDraftFieldLabels;
+  return (table[kind] as Record<string, string>)[field] ?? field;
+}
+
 function buildSkillStudioFlowItems(text: string, events: SkillStudioUiEvent[]): SkillStudioFlowItem[] {
   if (events.length === 0) {
     return text ? [{ kind: "text", key: "text:0", text }] : [];
@@ -5896,20 +5947,21 @@ function listText(value: unknown): string {
   return "";
 }
 
-function skillStudioInputParameterTypeLabel(value: unknown): string {
+function skillStudioInputParameterTypeLabel(value: unknown, t?: TFunction): string {
+  const tr = clarificationText(t);
   switch (value) {
     case "single_select":
-      return "单选";
+      return tr("freezone.chat.skillStudio.parameterType.single", { defaultValue: "单选" });
     case "multi_select":
-      return "多选";
+      return tr("freezone.chat.skillStudio.parameterType.multiple", { defaultValue: "多选" });
     case "number":
-      return "数字";
+      return tr("freezone.chat.skillStudio.parameterType.number", { defaultValue: "数字" });
     case "boolean":
-      return "开关";
+      return tr("freezone.chat.skillStudio.parameterType.boolean", { defaultValue: "开关" });
     case "text":
-      return "文本";
+      return tr("freezone.chat.skillStudio.parameterType.text", { defaultValue: "文本" });
     default:
-      return textField(value) || "参数";
+      return textField(value) || tr("freezone.chat.skillStudio.parameterType.parameter", { defaultValue: "参数" });
   }
 }
 
@@ -6195,6 +6247,7 @@ function SkillStudioListField({
   placeholder?: string;
   value: string[];
 }) {
+  const { t } = useTranslation();
   const [draft, setDraft] = useState("");
 
   const editInputRef = useRef<HTMLInputElement | null>(null);
@@ -6243,7 +6296,7 @@ function SkillStudioListField({
             {editingIndex === index ? (
               <input
                 ref={editInputRef}
-                aria-label={`编辑 ${item}`}
+                aria-label={t("freezone.chat.skillStudio.editItem", { item })}
                 value={editingDraft}
                 onChange={(event) => setEditingDraft(event.target.value)}
                 onBlur={commitEditItem}
@@ -6267,7 +6320,7 @@ function SkillStudioListField({
             ) : (
               <button
                 type="button"
-                aria-label={`编辑 ${item}`}
+                aria-label={t("freezone.chat.skillStudio.editItem", { item })}
                 onMouseDown={(event) => event.preventDefault()}
                 onClick={() => beginEditItem(index, item)}
                 className="min-w-0 rounded-sm text-left whitespace-normal break-words leading-4 transition-colors hover:text-cyan-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-cyan-300/30"
@@ -6278,7 +6331,7 @@ function SkillStudioListField({
             {!disabled && (
               <button
                 type="button"
-                aria-label={`删除 ${item}`}
+                aria-label={t("freezone.chat.skillStudio.deleteItem", { item })}
                 onClick={() => removeItem(index)}
                 className="grid size-3.5 shrink-0 place-items-center rounded text-muted-foreground transition-colors hover:text-foreground"
               >
@@ -6475,27 +6528,56 @@ function skillStudioSelectionForMode(
   };
 }
 
-function formatSkillStudioOption(option: SkillStudioQuestionOption): string {
-  const label = option.label?.trim() || option.id?.trim() || "未命名选项";
+ // Resolve a clarification/approval string through the component's t() when
+// one is passed, or fall back to the Chinese defaultValue when a *ForTest
+// helper is called without t (unit tests run without an initialised i18n
+// instance, so the fallback keeps their exact Chinese expectations).
+// All Chinese fallback text lives inside double-quoted defaultValue strings,
+// which scripts/check_frontend_i18n.py exempts.
+function clarificationText(t: TFunction | undefined): (
+  key: string,
+  options?: { defaultValue?: string; [name: string]: unknown },
+) => string {
+  return (key, options) => {
+    if (t) return t(key, options as never) as unknown as string;
+    let text = options?.defaultValue ?? key;
+    for (const [name, value] of Object.entries(options ?? {})) {
+      if (name === "defaultValue") continue;
+      text = text.split(`{{${name}}}`).join(String(value ?? ""));
+    }
+    return text;
+  };
+}
+
+function formatSkillStudioOption(option: SkillStudioQuestionOption, t?: TFunction): string {
+  const tr = clarificationText(t);
+  const label = option.label?.trim() || option.id?.trim()
+    || tr("freezone.chat.clarification.unnamedOption", { defaultValue: "未命名选项" });
   const description = option.description?.trim();
-  return description ? `${label}（${description}）` : label;
+  return description
+    ? isEnglishUi() ? `${label} (${description})` : `${label}（${description}）`
+    : label;
 }
 
 function selectedSkillStudioOptionLabel(
   question: SkillStudioQuestion,
   questionIndex: number,
   selections: SkillStudioQuestionSelections,
+  t?: TFunction,
 ): string {
+  const tr = clarificationText(t);
   const selection = normalizedSkillStudioQuestionSelection(selections[skillStudioQuestionKey(question, questionIndex)]);
   const selectedLabels = selection.optionIds
     .map((optionId) => {
       const option = findSkillStudioOption(question, optionId);
-      return option ? formatSkillStudioOption(option) : optionId.trim();
+      return option ? formatSkillStudioOption(option, t) : optionId.trim();
     })
     .filter(Boolean);
   const customText = selection.customText.trim();
-  const parts = [...selectedLabels, ...(customText ? [`补充：${customText}`] : [])];
-  return parts.length > 0 ? parts.join("；") : "未选择";
+  const parts = [...selectedLabels, ...(customText ? [tr("freezone.chat.clarification.notePrefix", { text: customText, defaultValue: "补充：{{text}}" })] : [])];
+  return parts.length > 0
+    ? parts.join(isEnglishUi() ? "; " : "；")
+    : tr("freezone.chat.clarification.notSelected", { defaultValue: "未选择" });
 }
 
 type SkillStudioQuestionTimelineItem = {
@@ -6505,9 +6587,10 @@ type SkillStudioQuestionTimelineItem = {
   answered: boolean;
 };
 
-function skillStudioQuestionActionSummary(action: string | undefined): string | null {
-  if (action === "skip") return "已跳过";
-  if (action === "recommended") return "已用推荐配置";
+function skillStudioQuestionActionSummary(action: string | undefined, t?: TFunction): string | null {
+  const tr = clarificationText(t);
+  if (action === "skip") return tr("freezone.chat.clarification.skippedAction", { defaultValue: "已跳过" });
+  if (action === "recommended") return tr("freezone.chat.clarification.recommendedAction", { defaultValue: "已用推荐配置" });
   return null;
 }
 
@@ -6515,8 +6598,10 @@ function buildSkillStudioQuestionTimelineItems(
   questions: SkillStudioQuestion[],
   selections: SkillStudioQuestionSelections,
   action?: string,
+  t?: TFunction,
 ): SkillStudioQuestionTimelineItem[] {
-  const actionSummary = skillStudioQuestionActionSummary(action);
+  const tr = clarificationText(t);
+  const actionSummary = skillStudioQuestionActionSummary(action, t);
   return questions
     .map((question, index) => ({ question, index }))
     .filter(({ question }) => (question.options ?? []).length > 0 || skillStudioQuestionAllowsCustom(question))
@@ -6525,8 +6610,8 @@ function buildSkillStudioQuestionTimelineItems(
       const hasAnswer = skillStudioSelectionHasAnswer(selections[key]);
       return {
         key,
-        title: question.title || question.question || `问题 ${index + 1}`,
-        summary: hasAnswer ? selectedSkillStudioOptionLabel(question, index, selections) : actionSummary ?? "未选择",
+        title: question.title || question.question || tr("freezone.chat.clarification.questionFallback", { index: index + 1, defaultValue: "问题 {{index}}" }),
+        summary: hasAnswer ? selectedSkillStudioOptionLabel(question, index, selections, t) : actionSummary ?? tr("freezone.chat.clarification.notSelected", { defaultValue: "未选择" }),
         answered: hasAnswer || Boolean(actionSummary),
       };
     });
@@ -6538,10 +6623,12 @@ function visibleAssistantClarificationTimelineItems(
   questions: AssistantClarificationQuestion[],
   answers: AssistantClarificationAnswers,
   action?: string,
+  t?: TFunction,
 ): SkillStudioQuestionTimelineItem[] {
+  const tr = clarificationText(t);
   if (action === "skip") return [];
   if (action === "recommended") {
-    return buildSkillStudioQuestionTimelineItems(questions, answers, action)
+    return buildSkillStudioQuestionTimelineItems(questions, answers, action, t)
       .filter((item) => item.answered);
   }
   return questions
@@ -6551,8 +6638,8 @@ function visibleAssistantClarificationTimelineItems(
     )
     .map(({ question, index }) => ({
       key: skillStudioQuestionKey(question, index),
-      title: question.title || question.question || `问题 ${index + 1}`,
-      summary: selectedSkillStudioOptionLabel(question, index, answers),
+      title: question.title || question.question || tr("freezone.chat.clarification.questionFallback", { index: index + 1, defaultValue: "问题 {{index}}" }),
+      summary: selectedSkillStudioOptionLabel(question, index, answers, t),
       answered: true,
     }));
 }
@@ -6563,31 +6650,34 @@ export const visibleAssistantClarificationTimelineItemsForTest =
 export function buildSkillStudioQuestionResponseForTest(
   event: Extract<SkillStudioUiEvent, { type: "skill_studio.questions" }>,
   selections: SkillStudioQuestionSelections,
+  t?: TFunction,
 ): string {
+  const tr = clarificationText(t);
   const lines = [
-    "我已在 Skill Studio 问题卡片中完成选择。",
-    event.skill_studio_session_id ? `Skill Studio 会话：${event.skill_studio_session_id}` : "",
-    event.title ? `卡片：${event.title}` : "",
+    tr("freezone.chat.clarification.skillStudioAnswered", { defaultValue: "我已在 Skill Studio 问题卡片中完成选择。" }),
+    event.skill_studio_session_id ? tr("freezone.chat.clarification.skillStudioSession", { id: event.skill_studio_session_id, defaultValue: "Skill Studio 会话：{{id}}" }) : "",
+    event.title ? tr("freezone.chat.clarification.cardTitle", { title: event.title, defaultValue: "卡片：{{title}}" }) : "",
   ].filter(Boolean);
 
   const answers = (event.questions ?? [])
     .map((question, index) => ({ question, index }))
     .filter(({ question }) => (question.options ?? []).length > 0)
     .map(({ question, index }) =>
-      `- ${question.title || question.question || `问题 ${index + 1}`}：${selectedSkillStudioOptionLabel(question, index, selections)}`,
+      `- ${question.title || question.question || tr("freezone.chat.clarification.questionFallback", { index: index + 1, defaultValue: "问题 {{index}}" })}${isEnglishUi() ? ": " : "："}${selectedSkillStudioOptionLabel(question, index, selections, t)}`,
     );
 
   return [
     ...lines,
-    "选择如下：",
+    tr("freezone.chat.clarification.choicesFollow", { defaultValue: "选择如下：" }),
     ...answers,
-    "用户已完成选择，请结合当前上下文继续。",
+    tr("freezone.chat.clarification.selectionDone", { defaultValue: "用户已完成选择，请结合当前上下文继续。" }),
   ].join("\n");
 }
 
 export function buildSkillStudioQuestionToolResultForTest(
   event: Extract<SkillStudioUiEvent, { type: "skill_studio.questions" }>,
   selections: SkillStudioQuestionSelections,
+  t?: TFunction,
 ) {
   const safeSelections = Object.fromEntries(
     Object.entries(selections).filter(([key]) => !key.startsWith("__")),
@@ -6604,18 +6694,20 @@ export function buildSkillStudioQuestionToolResultForTest(
     ok: true,
     action: "submit",
     selections: safeSelections,
-    message: buildSkillStudioQuestionResponseForTest(event, safeSelections),
+    message: buildSkillStudioQuestionResponseForTest(event, safeSelections, t),
   };
 }
 
 export function buildAssistantClarificationResponseForTest(
   event: AssistantClarificationUiEvent,
   answers: AssistantClarificationAnswers,
+  t?: TFunction,
 ): string {
+  const tr = clarificationText(t);
   const lines = [
-    "我已完成补充信息选择。",
-    event.clarification_id ? `Clarification：${event.clarification_id}` : "",
-    event.title ? `卡片：${event.title}` : "",
+    tr("freezone.chat.clarification.clarificationDone", { defaultValue: "我已完成补充信息选择。" }),
+    event.clarification_id ? tr("freezone.chat.clarification.clarificationId", { id: event.clarification_id, defaultValue: "Clarification：{{id}}" }) : "",
+    event.title ? tr("freezone.chat.clarification.cardTitle", { title: event.title, defaultValue: "卡片：{{title}}" }) : "",
   ].filter(Boolean);
 
   const answerLines = (event.questions ?? [])
@@ -6624,14 +6716,14 @@ export function buildAssistantClarificationResponseForTest(
       skillStudioSelectionHasAnswer(answers[skillStudioQuestionKey(question, index)]),
     )
     .map(({ question, index }) =>
-      `${question.title || question.question || `问题 ${index + 1}`}\n${selectedSkillStudioOptionLabel(question, index, answers)}`,
+      `${question.title || question.question || tr("freezone.chat.clarification.questionFallback", { index: index + 1, defaultValue: "问题 {{index}}" })}\n${selectedSkillStudioOptionLabel(question, index, answers, t)}`,
     );
 
   return [
     ...lines,
-    "回答如下：",
+    tr("freezone.chat.clarification.answersFollow", { defaultValue: "回答如下：" }),
     ...answerLines,
-    "请根据以上补充信息执行下一步。",
+    tr("freezone.chat.clarification.followAnswers", { defaultValue: "请根据以上补充信息执行下一步。" }),
   ].join("\n");
 }
 
@@ -6639,22 +6731,24 @@ export function buildAssistantClarificationToolResultForTest(
   event: AssistantClarificationUiEvent,
   answers: AssistantClarificationAnswers,
   options: { skillStudioRevision?: boolean; projectId?: string; canvasId?: string; agentId?: string; cancelMessage?: string } = {},
+  t?: TFunction,
 ) {
+  const tr = clarificationText(t);
   const cancelled = answers.__action === "cancel";
   const safeAnswers = Object.fromEntries(
     Object.entries(answers).filter(([key]) => !key.startsWith("__")),
   ) as AssistantClarificationAnswers;
   const message = [
-    buildAssistantClarificationResponseForTest(event, safeAnswers),
+    buildAssistantClarificationResponseForTest(event, safeAnswers, t),
     options.skillStudioRevision
       ? [
-          "当前处于 Skill Studio 草稿修订流程。",
-          "只允许把本次回答中的明确选择或补充文本当作修改方向；不要从当前草稿内容、Recipe 结构或你自己的优化判断里推断用户想改什么。",
-          "如果本次回答只是选择了泛泛分类，例如基本信息、输入参数、能力模块内容、约束规则、质量标准、执行流程等，仍然不算具体修改方向；下一步必须继续调用 freezone_request_user_clarification 追问一个更具体的问题。",
-          "只有用户明确给出了具体目标和改法时，下一步才可以调用 freezone_patch_agent_catalog_draft 更新草稿，或用分片草稿工具替换较大的 Skill / Recipe 内容。",
-          "更新后必须调用 freezone_finish_agent_catalog_draft 展示新的可编辑草稿卡。",
-          "不要只回复普通文本，不要只总结修改意图，不要询问是否保存，也不要展示未修改的旧草稿。",
-          "只有修改方向仍不明确时，才再调用 freezone_request_user_clarification 追问一个问题。",
+          tr("freezone.chat.clarification.revisionIntro", { defaultValue: "当前处于 Skill Studio 草稿修订流程。" }),
+          tr("freezone.chat.clarification.revisionOnlyExplicit", { defaultValue: "只允许把本次回答中的明确选择或补充文本当作修改方向；不要从当前草稿内容、Recipe 结构或你自己的优化判断里推断用户想改什么。" }),
+          tr("freezone.chat.clarification.revisionVague", { defaultValue: "如果本次回答只是选择了泛泛分类，例如基本信息、输入参数、能力模块内容、约束规则、质量标准、执行流程等，仍然不算具体修改方向；下一步必须继续调用 freezone_request_user_clarification 追问一个更具体的问题。" }),
+          tr("freezone.chat.clarification.revisionConcrete", { defaultValue: "只有用户明确给出了具体目标和改法时，下一步才可以调用 freezone_patch_agent_catalog_draft 更新草稿，或用分片草稿工具替换较大的 Skill / Recipe 内容。" }),
+          tr("freezone.chat.clarification.revisionShowDraft", { defaultValue: "更新后必须调用 freezone_finish_agent_catalog_draft 展示新的可编辑草稿卡。" }),
+          tr("freezone.chat.clarification.revisionNoPlainText", { defaultValue: "不要只回复普通文本，不要只总结修改意图，不要询问是否保存，也不要展示未修改的旧草稿。" }),
+          tr("freezone.chat.clarification.revisionAskAgain", { defaultValue: "只有修改方向仍不明确时，才再调用 freezone_request_user_clarification 追问一个问题。" }),
         ].join("\n")
       : "",
   ].filter(Boolean).join("\n\n");
@@ -6670,7 +6764,7 @@ export function buildAssistantClarificationToolResultForTest(
     ok: !cancelled,
     action: cancelled ? "cancel" : "submit",
     answers: safeAnswers,
-    message: cancelled ? options.cancelMessage ?? "用户退出模型选择，需要先调整镜头模式或配置兼容模型。" : message,
+    message: cancelled ? options.cancelMessage ?? tr("freezone.chat.clarification.cancelModelSelection", { defaultValue: "用户退出模型选择，需要先调整镜头模式或配置兼容模型。" }) : message,
   };
 }
 
@@ -6767,6 +6861,7 @@ export const normalizeSkillStudioDraftForCatalogForTest = normalizeSkillStudioDr
 export function buildSkillStudioDraftToolResultForTest(
   event: Extract<SkillStudioUiEvent, { type: "skill_studio.draft" }>,
   draft: Record<string, unknown>,
+  t?: TFunction,
 ) {
   const normalizedDraft = normalizeSkillStudioDraftForCatalog(draft);
   const skill = normalizedDraft.skill && typeof normalizedDraft.skill === "object" && !Array.isArray(normalizedDraft.skill)
@@ -6795,11 +6890,11 @@ export function buildSkillStudioDraftToolResultForTest(
     saved_recipe_ids: savedRecipeIds,
     draft: { summary, skill, recipes: dedupedRecipes, warnings },
     message: [
-      "我已在 Skill Studio 草稿卡片中确认添加，已保存为正式 Skill / Recipe。",
-      event.skill_studio_session_id ? `Skill Studio 会话：${event.skill_studio_session_id}` : "",
-      textField(skill.id) ? `Skill：${textField(skill.id)}` : "",
-      savedRecipeIds.length > 0 ? `Recipes：${savedRecipeIds.join("、")}` : "",
-      "该 Skill / Recipe 已写入虾画配置，可立即使用。请不要再要求用户保存为正式能力。",
+      clarificationText(t)("freezone.chat.skillStudio.draftSavedMessage", { defaultValue: "我已在 Skill Studio 草稿卡片中确认添加，已保存为正式 Skill / Recipe。" }),
+      event.skill_studio_session_id ? clarificationText(t)("freezone.chat.skillStudio.draftSavedSession", { defaultValue: "Skill Studio 会话：{{id}}", id: event.skill_studio_session_id }) : "",
+      textField(skill.id) ? clarificationText(t)("freezone.chat.skillStudio.draftSavedSkill", { defaultValue: "Skill：{{id}}", id: textField(skill.id) }) : "",
+      savedRecipeIds.length > 0 ? clarificationText(t)("freezone.chat.skillStudio.draftSavedRecipes", { defaultValue: "Recipes：{{ids}}", ids: savedRecipeIds.join(isEnglishUi() ? ", " : "、") }) : "",
+      clarificationText(t)("freezone.chat.skillStudio.draftSavedHint", { defaultValue: "该 Skill / Recipe 已写入虾画配置，可立即使用。请不要再要求用户保存为正式能力。" }),
     ].filter(Boolean).join("\n"),
   };
 }
@@ -6815,7 +6910,9 @@ interface SkillStudioToolResultResponse {
 
 export function buildSkillStudioDraftCancelToolResultForTest(
   event: Extract<SkillStudioUiEvent, { type: "skill_studio.draft" }>,
+  t?: TFunction,
 ) {
+  const tr = clarificationText(t);
   return {
     turn_id: event.turn_id ?? undefined,
     bridge_key: event.bridge_key ?? "",
@@ -6832,11 +6929,11 @@ export function buildSkillStudioDraftCancelToolResultForTest(
     saved_skill_ids: [],
     saved_recipe_ids: [],
     message: [
-      "用户已取消 Skill Studio 草稿保存。",
-      event.skill_studio_session_id ? `Skill Studio 会话：${event.skill_studio_session_id}` : "",
-      "本次草稿不会写入虾画配置。",
-      "这是用户点击取消按钮，不是修改请求，也不是重新提交请求。",
-      "请只确认取消结果，不要重新提交、重新展示、保存或修改这个草稿。",
+      tr("freezone.chat.clarification.draftCancelTitle", { defaultValue: "用户已取消 Skill Studio 草稿保存。" }),
+      event.skill_studio_session_id ? tr("freezone.chat.clarification.skillStudioSession", { id: event.skill_studio_session_id, defaultValue: "Skill Studio 会话：{{id}}" }) : "",
+      tr("freezone.chat.clarification.draftCancelNoWrite", { defaultValue: "本次草稿不会写入虾画配置。" }),
+      tr("freezone.chat.clarification.draftCancelNotRevision", { defaultValue: "这是用户点击取消按钮，不是修改请求，也不是重新提交请求。" }),
+      tr("freezone.chat.clarification.draftCancelOnlyConfirm", { defaultValue: "请只确认取消结果，不要重新提交、重新展示、保存或修改这个草稿。" }),
     ].filter(Boolean).join("\n"),
     agent_instruction: [
       "The user clicked Cancel on the Skill Studio draft.",
@@ -6850,7 +6947,9 @@ export function buildSkillStudioDraftCancelToolResultForTest(
 export function buildSkillStudioDraftRevisionToolResultForTest(
   event: Extract<SkillStudioUiEvent, { type: "skill_studio.draft" }>,
   draft: Record<string, unknown>,
+  t?: TFunction,
 ) {
+  const tr = clarificationText(t);
   const skill = draft.skill && typeof draft.skill === "object" && !Array.isArray(draft.skill)
     ? draft.skill as Record<string, unknown>
     : {};
@@ -6878,21 +6977,21 @@ export function buildSkillStudioDraftRevisionToolResultForTest(
     draft,
     draft_ref: draftRef,
     message: [
-      "用户已启动 Skill Studio 草稿修改会话。",
-      event.skill_studio_session_id ? `Skill Studio 会话：${event.skill_studio_session_id}` : "",
-      textField(skill.id) ? `当前草稿：${textField(skill.name) || textField(skill.id)}` : "",
-      "用户已经明确表示需要调整当前草稿，不要再询问是否需要调整。",
-      "不要询问是否保存当前版本，也不要提供 save_now / save_current / confirm_save 这类选项；保存只由页面草稿卡的确认按钮处理。",
-      "这不是继续完成原草稿，也不是要求重新展示当前草稿。",
-      "本次回执提供当前完整 draft，draft 只用于理解被修改对象和后续局部 patch；不要把 draft 内容当成用户修改意图。",
-      "用户还没有提供具体修改方向；下一步必须调用 freezone_request_user_clarification 追问修改方向、范围或偏好。",
-      "这次 clarification 的 questions 数组必须只有一个问题，问题要直接问用户想改哪里或怎么改。",
-      "在用户回答修改方向之前，禁止调用 freezone_begin_agent_catalog_draft / freezone_put_agent_catalog_skill / freezone_put_agent_catalog_recipe / freezone_finish_agent_catalog_draft。",
-      "在用户回答修改方向之前，也禁止调用 freezone_patch_agent_catalog_draft。",
-      "禁止调用 freezone_finish_agent_catalog_draft 原样展示当前草稿。",
-      "用户回答修改方向后，如果回答仍是泛泛分类，继续追问；只有回答包含具体目标和改法时，才基于当前完整草稿进行局部 patch 或分片输出更新草稿。",
-      "不要在单个 tool_call 里传完整 Skill / Recipe catalog。",
-      "不要用普通文本总结修改结果；不要只说明改了什么；未输出更新草稿前不要让用户保存。",
+      tr("freezone.chat.clarification.draftRevisionStarted", { defaultValue: "用户已启动 Skill Studio 草稿修改会话。" }),
+      event.skill_studio_session_id ? tr("freezone.chat.clarification.skillStudioSession", { id: event.skill_studio_session_id, defaultValue: "Skill Studio 会话：{{id}}" }) : "",
+      textField(skill.id) ? tr("freezone.chat.clarification.draftRevisionCurrent", { name: textField(skill.name) || textField(skill.id), defaultValue: "当前草稿：{{name}}" }) : "",
+      tr("freezone.chat.clarification.draftRevisionExplicit", { defaultValue: "用户已经明确表示需要调整当前草稿，不要再询问是否需要调整。" }),
+      tr("freezone.chat.clarification.draftRevisionNoSaveAsk", { defaultValue: "不要询问是否保存当前版本，也不要提供 save_now / save_current / confirm_save 这类选项；保存只由页面草稿卡的确认按钮处理。" }),
+      tr("freezone.chat.clarification.draftRevisionNotContinue", { defaultValue: "这不是继续完成原草稿，也不是要求重新展示当前草稿。" }),
+      tr("freezone.chat.clarification.draftRevisionDraftUse", { defaultValue: "本次回执提供当前完整 draft，draft 只用于理解被修改对象和后续局部 patch；不要把 draft 内容当成用户修改意图。" }),
+      tr("freezone.chat.clarification.draftRevisionNoDirection", { defaultValue: "用户还没有提供具体修改方向；下一步必须调用 freezone_request_user_clarification 追问修改方向、范围或偏好。" }),
+      tr("freezone.chat.clarification.draftRevisionOneQuestion", { defaultValue: "这次 clarification 的 questions 数组必须只有一个问题，问题要直接问用户想改哪里或怎么改。" }),
+      tr("freezone.chat.clarification.draftRevisionNoDraftTools", { defaultValue: "在用户回答修改方向之前，禁止调用 freezone_begin_agent_catalog_draft / freezone_put_agent_catalog_skill / freezone_put_agent_catalog_recipe / freezone_finish_agent_catalog_draft。" }),
+      tr("freezone.chat.clarification.draftRevisionNoPatch", { defaultValue: "在用户回答修改方向之前，也禁止调用 freezone_patch_agent_catalog_draft。" }),
+      tr("freezone.chat.clarification.draftRevisionNoFinishAsIs", { defaultValue: "禁止调用 freezone_finish_agent_catalog_draft 原样展示当前草稿。" }),
+      tr("freezone.chat.clarification.draftRevisionVagueFollowUp", { defaultValue: "用户回答修改方向后，如果回答仍是泛泛分类，继续追问；只有回答包含具体目标和改法时，才基于当前完整草稿进行局部 patch 或分片输出更新草稿。" }),
+      tr("freezone.chat.clarification.draftRevisionNoFullCatalog", { defaultValue: "不要在单个 tool_call 里传完整 Skill / Recipe catalog。" }),
+      tr("freezone.chat.clarification.draftRevisionNoPlainSummary", { defaultValue: "不要用普通文本总结修改结果；不要只说明改了什么；未输出更新草稿前不要让用户保存。" }),
     ].filter(Boolean).join("\n"),
   };
 }
@@ -6905,30 +7004,33 @@ function skillStudioDraftFooterText({
   submitted: boolean;
   cancelled: boolean;
   revisionPending: boolean;
-}): string {
-  if (submitted) return "已添加到虾画 Skills / Recipes";
-  if (cancelled) return "已取消，本草稿不会保存";
-  if (revisionPending) return "AI 调整中，请按后续问题补充修改方向";
-  return "保存前可展开各项继续微调";
+}, t?: TFunction): string {
+  const tr = clarificationText(t);
+  if (submitted) return tr("freezone.chat.clarification.draftSaved", { defaultValue: "已添加到虾画 Skills / Recipes" });
+  if (cancelled) return tr("freezone.chat.clarification.draftCancelled", { defaultValue: "已取消，本草稿不会保存" });
+  if (revisionPending) return tr("freezone.chat.clarification.draftRevising", { defaultValue: "AI 调整中，请按后续问题补充修改方向" });
+  return tr("freezone.chat.clarification.draftBeforeSave", { defaultValue: "保存前可展开各项继续微调" });
 }
 
 export const skillStudioDraftFooterTextForTest = skillStudioDraftFooterText;
 
-function buildSkillStudioRecommendedResponse(event: Extract<SkillStudioUiEvent, { type: "skill_studio.questions" }>): string {
+function buildSkillStudioRecommendedResponse(event: Extract<SkillStudioUiEvent, { type: "skill_studio.questions" }>, t?: TFunction): string {
+  const tr = clarificationText(t);
   return [
-    "请使用推荐配置继续 Skill Studio 流程。",
-    event.skill_studio_session_id ? `Skill Studio 会话：${event.skill_studio_session_id}` : "",
-    event.title ? `卡片：${event.title}` : "",
-    "请基于当前目标直接生成一个可编辑的 Skill / Recipe 草稿。",
+    tr("freezone.chat.clarification.recommendedResponse", { defaultValue: "请使用推荐配置继续 Skill Studio 流程。" }),
+    event.skill_studio_session_id ? tr("freezone.chat.clarification.skillStudioSession", { id: event.skill_studio_session_id, defaultValue: "Skill Studio 会话：{{id}}" }) : "",
+    event.title ? tr("freezone.chat.clarification.cardTitle", { title: event.title, defaultValue: "卡片：{{title}}" }) : "",
+    tr("freezone.chat.clarification.recommendedGenerate", { defaultValue: "请基于当前目标直接生成一个可编辑的 Skill / Recipe 草稿。" }),
   ].filter(Boolean).join("\n");
 }
 
-function buildSkillStudioSkipResponse(event: Extract<SkillStudioUiEvent, { type: "skill_studio.questions" }>): string {
+function buildSkillStudioSkipResponse(event: Extract<SkillStudioUiEvent, { type: "skill_studio.questions" }>, t?: TFunction): string {
+  const tr = clarificationText(t);
   return [
-    "我选择跳过问题卡片，直接进入 Skill Studio 草稿生成。",
-    event.skill_studio_session_id ? `Skill Studio 会话：${event.skill_studio_session_id}` : "",
-    event.title ? `卡片：${event.title}` : "",
-    "请根据已有上下文生成 Skill / Recipe 草稿。",
+    tr("freezone.chat.clarification.skipResponse", { defaultValue: "我选择跳过问题卡片，直接进入 Skill Studio 草稿生成。" }),
+    event.skill_studio_session_id ? tr("freezone.chat.clarification.skillStudioSession", { id: event.skill_studio_session_id, defaultValue: "Skill Studio 会话：{{id}}" }) : "",
+    event.title ? tr("freezone.chat.clarification.cardTitle", { title: event.title, defaultValue: "卡片：{{title}}" }) : "",
+    tr("freezone.chat.clarification.skipGenerate", { defaultValue: "请根据已有上下文生成 Skill / Recipe 草稿。" }),
   ].filter(Boolean).join("\n");
 }
 
@@ -6959,6 +7061,7 @@ function SkillStudioQuestionsCard({
     selections: SkillStudioQuestionSelections,
   ) => Promise<boolean>;
 }) {
+  const { t } = useTranslation();
   const questions = Array.isArray(event.questions) ? event.questions : [];
   const eventIdentity = skillStudioQuestionEventIdentity(event);
   const [selections, setSelections] = useState<SkillStudioQuestionSelections>(() =>
@@ -6982,12 +7085,12 @@ function SkillStudioQuestionsCard({
   const canSubmitSelections = selectableQuestions.length > 0 && hasAnySelection;
   const allQuestionsAnswered = selectableQuestions.length > 0 && answeredCount === selectableQuestions.length;
   const timelineItems = useMemo(
-    () => buildSkillStudioQuestionTimelineItems(questions, selections, event.action),
-    [event.action, questions, selections],
+    () => buildSkillStudioQuestionTimelineItems(questions, selections, event.action, t),
+    [event.action, questions, selections, t],
   );
   const submittedSummary = submitted
-    ? skillStudioQuestionActionSummary(event.action)
-      ?? `已提交回答 · ${answeredCount} / ${selectableQuestions.length || timelineItems.length} 个`
+    ? skillStudioQuestionActionSummary(event.action, t)
+      ?? t("freezone.chat.clarification.submittedAnswersCount", { answered: answeredCount, total: selectableQuestions.length || timelineItems.length })
     : "";
   const goToQuestion = useCallback((position: number) => {
     if (selectableQuestions.length === 0) return;
@@ -7050,14 +7153,14 @@ function SkillStudioQuestionsCard({
               <span className="flex size-5 shrink-0 items-center justify-center rounded-md bg-emerald-400/10 text-emerald-100/85">
                 <CheckCircle2 className="size-3.5" />
               </span>
-              <span className="truncate font-medium tracking-normal">{event.title || "Skill Studio 选择"}</span>
+              <span className="truncate font-medium tracking-normal">{event.title || t("freezone.chat.skillStudio.selectTitle")}</span>
             </div>
             <div className="mt-1 text-[11px] text-muted-foreground">
               {submittedSummary}
             </div>
           </div>
           <span className="shrink-0 rounded-full border border-emerald-300/15 bg-emerald-400/[0.08] px-2 py-0.5 text-[11px] text-emerald-100/75">
-            {skillStudioQuestionActionSummary(event.action) ?? "已提交"}
+            {skillStudioQuestionActionSummary(event.action, t) ?? t("freezone.chat.clarification.submitted")}
           </span>
         </div>
         <div className="relative ml-2.5 space-y-0.5">
@@ -7091,7 +7194,7 @@ function SkillStudioQuestionsCard({
           ))}
           {timelineItems.length === 0 && (
             <div className="rounded-xl border border-white/[0.06] bg-black/10 px-3 py-2 text-xs text-muted-foreground">
-              已提交，未包含可展示的问题配置。
+              {t("freezone.chat.clarification.noConfigQuestions")}
             </div>
           )}
         </div>
@@ -7107,7 +7210,11 @@ function SkillStudioQuestionsCard({
   const activeSelectedCount = activeSelection.optionIds.length + (activeSelection.customText.trim() ? 1 : 0);
   const hasPrevious = activeQuestionPosition > 0;
   const hasNext = activeQuestionPosition < selectableQuestions.length - 1;
-  const continueLabel = hasNext ? "下一题" : allQuestionsAnswered ? "提交选择" : "用当前选择继续";
+  const continueLabel = hasNext
+    ? t("freezone.chat.clarification.nextQuestion")
+    : allQuestionsAnswered
+      ? t("freezone.chat.clarification.submitChoices")
+      : t("freezone.chat.clarification.continueWithChoices");
   const continueAction = () => {
     if (hasNext) {
       goToQuestion(activeQuestionPosition + 1);
@@ -7121,7 +7228,7 @@ function SkillStudioQuestionsCard({
 	      <div className="mb-2.5 grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
 	        <div className="min-w-0">
 	          <div className="line-clamp-2 break-words text-sm font-medium leading-5 text-foreground">
-	            {activeQuestion?.title || activeQuestion?.question || event.title || "需要你补充一点信息"}
+	            {activeQuestion?.title || activeQuestion?.question || event.title || t("freezone.chat.clarification.needMoreInfo")}
 	          </div>
 	          {event.description && (
 	            <div className="mt-1 line-clamp-2 text-xs leading-5 text-muted-foreground">
@@ -7136,7 +7243,7 @@ function SkillStudioQuestionsCard({
               disabled={!hasPrevious}
               className="flex size-7 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-white/[0.06] hover:text-foreground disabled:pointer-events-none disabled:opacity-35"
               onClick={() => goToQuestion(activeQuestionPosition - 1)}
-              aria-label="上一题"
+              aria-label={t("freezone.chat.clarification.previousQuestion")}
             >
               <ChevronLeft className="size-4" />
             </button>
@@ -7146,7 +7253,7 @@ function SkillStudioQuestionsCard({
               disabled={!hasNext}
               className="flex size-7 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-white/[0.06] hover:text-foreground disabled:pointer-events-none disabled:opacity-35"
               onClick={() => goToQuestion(activeQuestionPosition + 1)}
-              aria-label="下一题"
+              aria-label={t("freezone.chat.clarification.nextQuestion")}
             >
               <ChevronRight className="size-4" />
             </button>
@@ -7157,10 +7264,10 @@ function SkillStudioQuestionsCard({
         {activeQuestion ? (
           <div className="overflow-hidden rounded-2xl bg-white/[0.035] ring-1 ring-white/[0.07]">
           <div className="flex items-center justify-between gap-2 px-3 py-2 text-[11px] text-muted-foreground/80">
-            <span>{activeSelectionMode === "multiple" ? "可多选，也可以补充" : "选择一个方向，也可以补充"}</span>
+            <span>{activeSelectionMode === "multiple" ? t("freezone.chat.clarification.chooseMultiple") : t("freezone.chat.clarification.chooseDirection")}</span>
             {activeSelectionMode === "multiple" && (
               <span className="shrink-0 rounded-full bg-white/[0.05] px-2 py-1 text-[11px] text-muted-foreground">
-                多选
+                {t("freezone.chat.clarification.multiple")}
               </span>
             )}
           </div>
@@ -7183,7 +7290,7 @@ function SkillStudioQuestionsCard({
 	                  <QuestionOptionSelectionMark selected={selected} mode={activeSelectionMode} />
 	                  <span className="min-w-0 flex-1">
                     <span className="block break-words text-sm leading-5 text-foreground/88">
-                      {option.label || option.id || `选项 ${optionIndex + 1}`}
+                      {option.label || option.id || t("freezone.chat.clarification.optionFallback", { index: optionIndex + 1 })}
                     </span>
                     {option.description && (
                       <span className="mt-0.5 block line-clamp-2 break-words text-xs leading-4 text-muted-foreground">
@@ -7200,7 +7307,7 @@ function SkillStudioQuestionsCard({
                 <Textarea
                   value={activeSelection.customText}
                   onChange={(changeEvent) => updateCustomText(activeQuestion, activeQuestionIndex, changeEvent.target.value)}
-                  placeholder="其他补充..."
+                  placeholder={t("freezone.chat.clarification.addNotes")}
                   className="min-h-11 resize-none rounded-xl border-0 bg-white/[0.05] px-3 py-2 text-sm leading-5 shadow-none placeholder:text-muted-foreground/65 focus-visible:ring-1 focus-visible:ring-white/15"
                 />
               </div>
@@ -7209,13 +7316,13 @@ function SkillStudioQuestionsCard({
           </div>
         ) : (
           <div className="rounded-2xl border border-white/[0.08] bg-white/[0.025] px-3 py-6 text-center text-xs text-muted-foreground">
-            暂无可选择的问题
+            {t("freezone.chat.clarification.noQuestions")}
           </div>
         )}
       </div>
       <div className="mt-2.5 flex shrink-0 flex-wrap items-center justify-between gap-2 border-t border-white/[0.08] pt-2.5">
         <div className="text-xs text-muted-foreground/80">
-          已选择 {activeSelectedCount} 项 · {answeredCount} / {selectableQuestions.length}
+          {t("freezone.chat.clarification.selectedCount", { selected: activeSelectedCount, answered: answeredCount, total: selectableQuestions.length })}
         </div>
         <div className="flex items-center gap-2">
           {event.allow_skip && (
@@ -7231,7 +7338,7 @@ function SkillStudioQuestionsCard({
                 });
               }}
             >
-              跳过
+              {t("freezone.chat.clarification.skip")}
             </Button>
           )}
           {event.allow_recommended && (
@@ -7247,7 +7354,7 @@ function SkillStudioQuestionsCard({
                 });
               }}
             >
-              使用推荐配置
+              {t("freezone.chat.clarification.useRecommended")}
             </Button>
           )}
           <Button
@@ -7273,6 +7380,7 @@ function AssistantClarificationSummaryCard({ event }: { event: AssistantClarific
     questions,
     answers,
     event.action,
+    t,
   );
   const answeredCount = timelineItems.length;
   const cancelled = event.cancelled === true
@@ -7297,7 +7405,7 @@ function AssistantClarificationSummaryCard({ event }: { event: AssistantClarific
             <span className="flex size-5 shrink-0 items-center justify-center rounded-md bg-emerald-400/10 text-emerald-100/85">
               {cancelled ? <X className="size-3.5" /> : <CheckCircle2 className="size-3.5" />}
             </span>
-            <span className="truncate font-medium tracking-normal">{event.title || "问题回答"}</span>
+            <span className="truncate font-medium tracking-normal">{event.title || t("freezone.chat.clarification.answersTitle")}</span>
           </div>
           <div className="mt-1 text-[11px] text-muted-foreground">
             {countLabel}
@@ -7497,10 +7605,10 @@ function AssistantClarificationInputCard({
   const hasNext = activeQuestionPosition < selectableQuestions.length - 1;
   const activeSelectedCount = activeSelection.optionIds.length + (activeSelection.customText.trim() ? 1 : 0);
   const continueLabel = hasNext
-    ? "下一题"
+    ? t("freezone.chat.clarification.nextQuestion")
     : allQuestionsAnswered
-      ? "提交选择"
-      : isGenerationCard ? "请完成所有选择" : "用当前选择继续";
+      ? t("freezone.chat.clarification.submitChoices")
+      : isGenerationCard ? t("freezone.chat.clarification.completeAllChoices") : t("freezone.chat.clarification.continueWithChoices");
   const continueAction = () => {
     if (hasNext) {
       goToQuestion(activeQuestionPosition + 1);
@@ -7514,7 +7622,7 @@ function AssistantClarificationInputCard({
 	      <div className="mb-2.5 grid shrink-0 grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
 	        <div className="min-w-0">
 	          <div className="line-clamp-2 break-words text-sm font-medium leading-5 text-foreground">
-	            {activeQuestion?.title || activeQuestion?.question || event.title || "需要你补充一点信息"}
+	            {activeQuestion?.title || activeQuestion?.question || event.title || t("freezone.chat.clarification.needMoreInfo")}
 	          </div>
 	          {event.description && (
 	            <div className="mt-1 line-clamp-2 text-xs leading-5 text-muted-foreground">
@@ -7529,7 +7637,7 @@ function AssistantClarificationInputCard({
               disabled={!hasPrevious}
               className="flex size-7 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-white/[0.06] hover:text-foreground disabled:pointer-events-none disabled:opacity-35"
               onClick={() => goToQuestion(activeQuestionPosition - 1)}
-              aria-label="上一题"
+              aria-label={t("freezone.chat.clarification.previousQuestion")}
             >
               <ChevronLeft className="size-4" />
             </button>
@@ -7539,7 +7647,7 @@ function AssistantClarificationInputCard({
               disabled={!hasNext}
               className="flex size-7 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-white/[0.06] hover:text-foreground disabled:pointer-events-none disabled:opacity-35"
               onClick={() => goToQuestion(activeQuestionPosition + 1)}
-              aria-label="下一题"
+              aria-label={t("freezone.chat.clarification.nextQuestion")}
             >
               <ChevronRight className="size-4" />
             </button>
@@ -7550,10 +7658,10 @@ function AssistantClarificationInputCard({
         {activeQuestion ? (
           <div className="overflow-hidden rounded-2xl bg-white/[0.035] ring-1 ring-white/[0.07]">
             <div className="flex items-center justify-between gap-2 px-3 py-2 text-[11px] text-muted-foreground/80">
-              <span>{activeSelectionMode === "multiple" ? "可多选，也可以补充" : "选择一个方向，也可以补充"}</span>
+              <span>{activeSelectionMode === "multiple" ? t("freezone.chat.clarification.chooseMultiple") : t("freezone.chat.clarification.chooseDirection")}</span>
               {activeSelectionMode === "multiple" && (
                 <span className="shrink-0 rounded-full bg-white/[0.05] px-2 py-1 text-[11px] text-muted-foreground">
-                  多选
+                  {t("freezone.chat.clarification.multiple")}
                 </span>
               )}
             </div>
@@ -7576,7 +7684,7 @@ function AssistantClarificationInputCard({
   	                  <QuestionOptionSelectionMark selected={selected} mode={activeSelectionMode} />
   	                  <span className="min-w-0 flex-1">
                       <span className="block break-words text-sm leading-5 text-foreground/88">
-                        {option.label || option.id || `选项 ${optionIndex + 1}`}
+                        {option.label || option.id || t("freezone.chat.clarification.optionFallback", { index: optionIndex + 1 })}
                       </span>
                       {option.description && (
                         <span className="mt-0.5 block line-clamp-2 break-words text-xs leading-4 text-muted-foreground">
@@ -7593,7 +7701,7 @@ function AssistantClarificationInputCard({
                   <Textarea
                     value={activeSelection.customText}
                     onChange={(changeEvent) => updateCustomText(activeQuestion, activeQuestionIndex, changeEvent.target.value)}
-                    placeholder="其他补充..."
+                    placeholder={t("freezone.chat.clarification.addNotes")}
                     className="min-h-11 resize-none rounded-xl border-0 bg-white/[0.05] px-3 py-2 text-sm leading-5 shadow-none placeholder:text-muted-foreground/65 focus-visible:ring-1 focus-visible:ring-white/15"
                   />
                 </div>
@@ -7602,7 +7710,7 @@ function AssistantClarificationInputCard({
           </div>
         ) : (
           <div className="rounded-2xl border border-white/[0.08] bg-white/[0.025] px-3 py-6 text-center text-xs text-muted-foreground">
-            暂无可选择的问题
+            {t("freezone.chat.clarification.noQuestions")}
           </div>
         )}
       </div>
@@ -7613,7 +7721,7 @@ function AssistantClarificationInputCard({
       )}
       <div className="mt-2.5 flex shrink-0 flex-wrap items-center justify-between gap-2 border-t border-white/[0.08] pt-2.5">
         <div className="text-xs text-muted-foreground/80">
-          已选择 {activeSelectedCount} 项 · {answeredCount} / {selectableQuestions.length}
+          {t("freezone.chat.clarification.selectedCount", { selected: activeSelectedCount, answered: answeredCount, total: selectableQuestions.length })}
         </div>
         <div className="flex items-center gap-2">
           {canExitUnavailableVideoModel && (
@@ -7639,7 +7747,7 @@ function AssistantClarificationInputCard({
                 void submitResponse({ __action: "skip" });
               }}
             >
-              跳过
+              {t("freezone.chat.clarification.skip")}
             </Button>
           )}
           {!generationCatalogIssue && assistantClarificationShowsRecommended(
@@ -7655,7 +7763,7 @@ function AssistantClarificationInputCard({
                 void submitResponse({ ...recommendedAnswers, __action: "recommended" });
               }}
             >
-              使用推荐配置
+              {t("freezone.chat.clarification.useRecommended")}
             </Button>
           )}
           <Button
@@ -7665,7 +7773,7 @@ function AssistantClarificationInputCard({
             disabled={!onSubmit || isSubmitting || (hasNext ? false : !canSubmit)}
             onClick={continueAction}
           >
-            {isSubmitting ? "提交中…" : continueLabel}
+            {isSubmitting ? t("freezone.chat.clarification.submitting") : continueLabel}
           </Button>
         </div>
       </div>
@@ -7702,6 +7810,7 @@ function SkillStudioDraftCard({
   ) => void;
   onPreserveScrollAnchor?: (anchor: HTMLElement | null) => void;
 }) {
+  const { t } = useTranslation();
   const [draftObject, setDraftObject] = useState<Record<string, unknown>>(() => draftPayloadFromEvent(event));
   const [draftText, setDraftText] = useState(() => prettyJson(draftObject));
   const [submitted, setSubmitted] = useState(event.submitted === true);
@@ -7783,11 +7892,11 @@ function SkillStudioDraftCard({
     try {
       parsed = JSON.parse(draftText);
     } catch {
-      setJsonError("JSON 格式不正确，请检查后再提交");
+      setJsonError(t("freezone.chat.skillStudio.jsonInvalid"));
       return;
     }
     if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-      setJsonError("草稿必须是 JSON 对象");
+      setJsonError(t("freezone.chat.skillStudio.jsonMustBeObject"));
       return;
     }
     setJsonError(null);
@@ -7807,11 +7916,11 @@ function SkillStudioDraftCard({
     try {
       parsed = JSON.parse(draftText);
     } catch {
-      setJsonError("JSON 格式不正确，请检查后再调整");
+      setJsonError(t("freezone.chat.skillStudio.jsonInvalidAdjust"));
       return;
     }
     if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-      setJsonError("草稿必须是 JSON 对象");
+      setJsonError(t("freezone.chat.skillStudio.jsonMustBeObject"));
       return;
     }
     setJsonError(null);
@@ -7843,10 +7952,10 @@ function SkillStudioDraftCard({
         <span className="flex size-6 items-center justify-center rounded-md border border-white/[0.08] bg-white/[0.04] text-emerald-100/90">
           <Package className="size-3.5" />
         </span>
-        <span className="font-medium">{incomplete ? "Skill 草稿未完成" : "Skill / Recipe 草稿"}</span>
+        <span className="font-medium">{incomplete ? t("freezone.chat.skillStudio.draftIncompleteTitle") : t("freezone.chat.skillStudio.draftTitle")}</span>
         {event.mode && (
           <Badge variant="outline" className="h-5 rounded-md border-white/[0.1] px-1.5 text-[10px] text-muted-foreground">
-            {event.mode === "edit" ? "编辑" : "新建"}
+            {event.mode === "edit" ? t("freezone.chat.skillStudio.editMode") : t("freezone.chat.skillStudio.newMode")}
           </Badge>
         )}
       </div>
@@ -7855,12 +7964,12 @@ function SkillStudioDraftCard({
       )}
       {incomplete && (
         <div className="mb-3 rounded-lg border border-amber-300/20 bg-amber-300/[0.055] px-3 py-2 text-xs leading-5 text-amber-50/85">
-          <div>Agent 已提交了一部分内容，但本轮对话已结束，草稿还不能保存。</div>
+          <div>{t("freezone.chat.skillStudio.incompleteNotice")}</div>
           {(completedItems.length > 0 || missingItems.length > 0) && (
             <div className="mt-2 grid gap-2 sm:grid-cols-2">
               {completedItems.length > 0 && (
                 <div>
-                  <div className="text-amber-50/60">已完成</div>
+                  <div className="text-amber-50/60">{t("freezone.chat.skillStudio.completedSection")}</div>
                   <ul className="mt-1 space-y-0.5">
                     {completedItems.map((item) => <li key={item}>{item}</li>)}
                   </ul>
@@ -7868,7 +7977,7 @@ function SkillStudioDraftCard({
               )}
               {missingItems.length > 0 && (
                 <div>
-                  <div className="text-amber-50/60">缺少</div>
+                  <div className="text-amber-50/60">{t("freezone.chat.skillStudio.missingSection")}</div>
                   <ul className="mt-1 space-y-0.5">
                     {missingItems.map((item) => <li key={item}>{item}</li>)}
                   </ul>
@@ -7876,7 +7985,7 @@ function SkillStudioDraftCard({
               )}
             </div>
           )}
-          <div className="mt-2 text-amber-50/65">继续对话后，Agent 可以基于当前草稿补全缺失部分。</div>
+          <div className="mt-2 text-amber-50/65">{t("freezone.chat.skillStudio.continueHint")}</div>
         </div>
       )}
       <div className="overflow-hidden rounded-xl border border-white/[0.08] bg-white/[0.045]">
@@ -7896,7 +8005,7 @@ function SkillStudioDraftCard({
             )}
           </div>
           <p className="mt-1.5 line-clamp-3 text-xs leading-5 text-muted-foreground">
-            {textField(skill.description) || "暂无描述"}
+            {textField(skill.description) || t("freezone.chat.skillStudio.noDescription")}
           </p>
         </div>
 
@@ -7905,13 +8014,13 @@ function SkillStudioDraftCard({
             <span className="flex min-w-0 items-center gap-2 text-foreground/85">
               <ChevronRight className="size-3.5 shrink-0 text-muted-foreground transition-transform group-open:rotate-90" />
               <Braces className="size-3.5 shrink-0 text-muted-foreground" />
-              <span>基础信息</span>
+              <span>{t("freezone.chat.skillStudio.basicInfo")}</span>
             </span>
           </summary>
           <div className="space-y-2 border-t border-white/[0.06] px-3 pb-3 pt-2">
             <div className="grid gap-2 md:grid-cols-2">
               <label>
-                <span className={labelClass}>{skillStudioDraftFieldLabels.skill.id}</span>
+                <span className={labelClass}>{skillStudioDraftFieldLabel("skill", "id")}</span>
                 <Input
                   value={textField(skill.id)}
                   disabled={readOnly}
@@ -7920,7 +8029,7 @@ function SkillStudioDraftCard({
                 />
               </label>
               <label>
-                <span className={labelClass}>{skillStudioDraftFieldLabels.skill.category}</span>
+                <span className={labelClass}>{skillStudioDraftFieldLabel("skill", "category")}</span>
                 <Input
                   value={textField(skill.category)}
                   disabled={readOnly}
@@ -7930,7 +8039,7 @@ function SkillStudioDraftCard({
               </label>
             </div>
             <label className="block">
-              <span className={labelClass}>{skillStudioDraftFieldLabels.skill.description}</span>
+              <span className={labelClass}>{skillStudioDraftFieldLabel("skill", "description")}</span>
               <Textarea
                 value={textField(skill.description)}
                 disabled={readOnly}
@@ -7946,16 +8055,16 @@ function SkillStudioDraftCard({
             <span className="flex min-w-0 items-center gap-2 text-foreground/85">
               <ChevronRight className="size-3.5 shrink-0 text-muted-foreground transition-transform group-open:rotate-90" />
               <Search className="size-3.5 shrink-0 text-muted-foreground" />
-              <span className="truncate">{skillStudioDraftFieldLabels.skill.keywords}</span>
+              <span className="truncate">{skillStudioDraftFieldLabel("skill", "keywords")}</span>
             </span>
           </summary>
 	          <div className="border-t border-white/[0.06] px-3 pb-3 pt-2">
 	            <SkillStudioListField
-	              label={skillStudioDraftFieldLabels.skill.keywords}
+	              label={skillStudioDraftFieldLabel("skill", "keywords")}
 	              value={stringListField(triggers.keywords)}
 	              disabled={readOnly}
 	              onChange={(value) => updateNestedSkillField("triggers", "keywords", value)}
-	              placeholder="输入关键词后按 Enter"
+	              placeholder={t("freezone.chat.skillStudio.keywordPlaceholder")}
 	            />
 	          </div>
 	        </details>
@@ -7966,16 +8075,16 @@ function SkillStudioDraftCard({
               <span className="flex min-w-0 items-center gap-2 text-foreground/85">
                 <ChevronRight className="size-3.5 shrink-0 text-muted-foreground transition-transform group-open:rotate-90" />
                 <SlidersHorizontal className="size-3.5 shrink-0 text-muted-foreground" />
-                <span>{skillStudioDraftFieldLabels.skill.inputParameters}</span>
+                <span>{skillStudioDraftFieldLabel("skill", "inputParameters")}</span>
               </span>
               <span className="rounded-full border border-cyan-300/20 bg-cyan-300/[0.08] px-2 py-0.5 text-[10px] text-cyan-100/80">
-                {inputParameters.length} 个选项
+                {t("freezone.chat.skillStudio.optionCount", { count: inputParameters.length })}
               </span>
             </summary>
             <div className="space-y-2 border-t border-white/[0.06] px-3 pb-3 pt-2">
               {inputParameters.map((parameter, parameterIndex) => {
                 const parameterId = textField(parameter.id);
-                const label = textField(parameter.label) || parameterId || `选项 ${parameterIndex + 1}`;
+                const label = textField(parameter.label) || parameterId || t("freezone.chat.skillStudio.optionFallback", { n: parameterIndex + 1 });
                 const options = cleanStringArray(parameter.options);
                 const defaultValue = skillStudioInputParameterValueLabel(parameter.default);
                 return (
@@ -7989,21 +8098,21 @@ function SkillStudioDraftCard({
                       </div>
                       <div className="flex shrink-0 flex-wrap justify-end gap-1">
                         <span className="rounded bg-white/[0.06] px-1.5 py-0.5 text-[10px] text-muted-foreground">
-                          {skillStudioInputParameterTypeLabel(parameter.type)}
+                          {skillStudioInputParameterTypeLabel(parameter.type, t)}
                         </span>
                         {defaultValue && (
                           <span className="rounded bg-white/[0.06] px-1.5 py-0.5 text-[10px] text-muted-foreground">
-                            默认 {defaultValue}
+                            {t("freezone.chat.skillStudio.defaultPrefix", { value: defaultValue })}
                           </span>
                         )}
                         {options.length > 0 && (
                           <span className="rounded bg-white/[0.06] px-1.5 py-0.5 text-[10px] text-muted-foreground">
-                            {options.length} 个选项
+                            {t("freezone.chat.skillStudio.optionCount", { count: options.length })}
                           </span>
                         )}
                         {parameter.required === true && (
                           <span className="rounded bg-cyan-500/15 px-1.5 py-0.5 text-[10px] text-cyan-200">
-                            必填
+                            {t("freezone.chat.skillStudio.required")}
                           </span>
                         )}
                       </div>
@@ -8030,13 +8139,13 @@ function SkillStudioDraftCard({
             <span className="flex min-w-0 items-center gap-2 text-foreground/85">
               <ChevronRight className="size-3.5 shrink-0 text-muted-foreground transition-transform group-open:rotate-90" />
               <ListTree className="size-3.5 shrink-0 text-muted-foreground" />
-              <span>规划策略</span>
+              <span>{t("freezone.chat.skillStudio.planningStrategy")}</span>
             </span>
           </summary>
           <div className="space-y-2 border-t border-white/[0.06] px-3 pb-3 pt-2">
             <div className="grid gap-2 md:grid-cols-2">
               <label>
-                <span className={labelClass}>{skillStudioDraftFieldLabels.skill.metaPlanningHints}</span>
+                <span className={labelClass}>{skillStudioDraftFieldLabel("skill", "metaPlanningHints")}</span>
 	                <Textarea
 	                  value={firstNonEmptyText(planning.planning_notes, planning.metaPlanningHints)}
 	                  disabled={readOnly}
@@ -8045,7 +8154,7 @@ function SkillStudioDraftCard({
 	                />
 	              </label>
 	              <label>
-	                <span className={labelClass}>{skillStudioDraftFieldLabels.skill.promptStyleGuide}</span>
+	                <span className={labelClass}>{skillStudioDraftFieldLabel("skill", "promptStyleGuide")}</span>
 	                <Textarea
 	                  value={firstNonEmptyText(planning.prompt_guide, planning.promptStyleGuide)}
 	                  disabled={readOnly}
@@ -8055,11 +8164,11 @@ function SkillStudioDraftCard({
 	              </label>
 	            </div>
 	            <SkillStudioListField
-	              label={skillStudioDraftFieldLabels.skill.behaviorRules}
+	              label={skillStudioDraftFieldLabel("skill", "behaviorRules")}
 	              value={stringListField(planning.conduct_rules, planning.behaviorRules)}
 	              disabled={readOnly}
 	              onChange={(value) => updateNestedSkillField("planning", "conduct_rules", value, ["behaviorRules"])}
-	              placeholder="输入规则后按 Enter"
+	              placeholder={t("freezone.chat.skillStudio.rulePlaceholder")}
 	            />
 	          </div>
 	        </details>
@@ -8069,12 +8178,12 @@ function SkillStudioDraftCard({
             <span className="flex min-w-0 items-center gap-2 text-foreground/85">
               <ChevronRight className="size-3.5 shrink-0 text-muted-foreground transition-transform group-open:rotate-90" />
               <CheckCircle2 className="size-3.5 shrink-0 text-muted-foreground" />
-              <span>评估标准</span>
+              <span>{t("freezone.chat.skillStudio.evaluationCriteria")}</span>
             </span>
           </summary>
           <div className="grid gap-2 border-t border-white/[0.06] px-3 pb-3 pt-2 md:grid-cols-[120px_1fr]">
             <label>
-              <span className={labelClass}>{skillStudioDraftFieldLabels.skill.passingScore}</span>
+              <span className={labelClass}>{skillStudioDraftFieldLabel("skill", "passingScore")}</span>
               <Input
                 value={String(evaluationFields.qualityThreshold ?? "")}
                 disabled={readOnly}
@@ -8083,40 +8192,40 @@ function SkillStudioDraftCard({
               />
             </label>
             <label>
-	              <span className={labelClass}>{skillStudioDraftFieldLabels.skill.domainRules}</span>
+	              <span className={labelClass}>{skillStudioDraftFieldLabel("skill", "domainRules")}</span>
 	              <Input
 	                value={listText(evaluationFields.domainConstraints)}
 	                disabled={readOnly}
 	                onChange={(changeEvent) => updateNestedSkillField("evaluation", "domain_constraints", parseListText(changeEvent.target.value))}
-	                placeholder="用顿号、逗号或换行分隔"
+	                placeholder={t("freezone.chat.skillStudio.criteriaSeparatorPlaceholder")}
 	                className={fieldClass}
 	              />
             </label>
             <div className="md:col-span-2">
               <SkillStudioListField
-                label={skillStudioDraftFieldLabels.skill.ratingBands}
+                label={skillStudioDraftFieldLabel("skill", "ratingBands")}
                 value={evaluationFields.ratingBands}
                 disabled={readOnly}
                 onChange={(value) => updateNestedSkillField("evaluation", "rating_bands", parseSkillStudioRatingBandList(value))}
-                placeholder="如：8：风格统一且文化元素准确"
+                placeholder={t("freezone.chat.skillStudio.criteriaExample1")}
               />
             </div>
             <div className="md:col-span-2">
               <SkillStudioListField
-                label={skillStudioDraftFieldLabels.skill.visualReviewItems}
+                label={skillStudioDraftFieldLabel("skill", "visualReviewItems")}
                 value={evaluationFields.visualReviewItems}
                 disabled={readOnly}
                 onChange={(value) => updateNestedSkillField("evaluation", "visual_review_items", parseSkillStudioReviewItemList(value))}
-                placeholder="如：风格一致性（0.35）：是否符合视觉风格"
+                placeholder={t("freezone.chat.skillStudio.criteriaExample2")}
               />
             </div>
             <div className="md:col-span-2">
               <SkillStudioListField
-                label={skillStudioDraftFieldLabels.skill.textReviewItems}
+                label={skillStudioDraftFieldLabel("skill", "textReviewItems")}
                 value={evaluationFields.textReviewItems}
                 disabled={readOnly}
                 onChange={(value) => updateNestedSkillField("evaluation", "text_review_items", parseSkillStudioReviewItemList(value))}
-                placeholder="如：文案传播力（0.4）：标题是否有记忆点"
+                placeholder={t("freezone.chat.skillStudio.criteriaExample3")}
               />
             </div>
           </div>
@@ -8127,10 +8236,10 @@ function SkillStudioDraftCard({
           <div className="flex items-center justify-between gap-3 border-b border-white/[0.07] px-3 py-2 text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
             <span className="flex min-w-0 items-center gap-2">
               <ListTree className="size-3.5 shrink-0" />
-              <span>复用 Recipes ({referencedRecipes.length})</span>
+              <span>{t("freezone.chat.skillStudio.reuseRecipes", { count: referencedRecipes.length })}</span>
             </span>
             <span className="shrink-0 rounded-full border border-white/[0.08] bg-white/[0.04] px-2 py-0.5 text-[10px] normal-case tracking-normal text-muted-foreground">
-              只读
+              {t("freezone.chat.skillStudio.readOnly")}
             </span>
           </div>
           <div>
@@ -8145,7 +8254,7 @@ function SkillStudioDraftCard({
                         ? "border-amber-300/25 bg-amber-300/[0.08] text-amber-100/85"
                         : "border-white/[0.08] bg-white/[0.04] text-muted-foreground",
                     )}>
-                      {recipe.missing ? "未找到" : recipe.outputKind === "html" ? "HTML 网页" : recipe.outputKind || "类型"}
+                      {recipe.missing ? t("freezone.chat.skillStudio.recipeNotFound") : recipe.outputKind === "html" ? t("freezone.chat.skillStudio.outputTypeHtml") : recipe.outputKind || t("freezone.chat.skillStudio.recipeTypeFallback")}
                     </span>
                     <span className="min-w-0 truncate text-foreground/85">
                       {recipe.name || recipe.id}
@@ -8155,12 +8264,12 @@ function SkillStudioDraftCard({
                 <div className="space-y-2 border-t border-white/[0.06] px-3 pb-3 pt-2">
                   {recipe.missing && (
                     <div className="rounded-md border border-amber-400/20 bg-amber-400/[0.05] px-2 py-1.5 text-xs text-amber-100/90">
-                      当前本地 Recipe 列表里没有找到这个 ID，保存前需要确认配置是否存在。
+                      {t("freezone.chat.skillStudio.recipeMissingHint")}
                     </div>
                   )}
                   <div className="grid gap-2 md:grid-cols-2">
                     <label>
-                      <span className={labelClass}>{skillStudioDraftFieldLabels.recipe.id}</span>
+                      <span className={labelClass}>{skillStudioDraftFieldLabel("recipe", "id")}</span>
                       <Input
                         value={recipe.id}
                         disabled
@@ -8169,55 +8278,55 @@ function SkillStudioDraftCard({
                       />
                     </label>
                     <label>
-                      <span className={labelClass}>{skillStudioDraftFieldLabels.recipe.name}</span>
+                      <span className={labelClass}>{skillStudioDraftFieldLabel("recipe", "name")}</span>
                       <Input
                         value={recipe.name}
                         disabled
                         readOnly
-                        placeholder="未匹配到名称"
+                        placeholder={t("freezone.chat.skillStudio.unmatchedName")}
                         className={fieldClass}
                       />
                     </label>
                   </div>
                   <div className="grid gap-2 md:grid-cols-2">
                     <label>
-                      <span className={labelClass}>{skillStudioDraftFieldLabels.recipe.output_kind}</span>
+                      <span className={labelClass}>{skillStudioDraftFieldLabel("recipe", "output_kind")}</span>
                       <Input
                         value={recipe.outputKind === "html" ? "HTML 网页" : recipe.outputKind}
                         disabled
                         readOnly
-                        placeholder="未匹配到类型"
+                        placeholder={t("freezone.chat.skillStudio.unmatchedType")}
                         className={fieldClass}
                       />
                     </label>
                     <SkillStudioListField
-                      label={skillStudioDraftFieldLabels.recipe.action_keys}
+                      label={skillStudioDraftFieldLabel("recipe", "action_keys")}
                       value={recipe.actionKeys}
                       disabled
                       onChange={() => undefined}
-                      placeholder="未匹配到动作类型"
+                      placeholder={t("freezone.chat.skillStudio.unmatchedAction")}
                     />
                   </div>
                   <label className="block">
-                    <span className={labelClass}>{skillStudioDraftFieldLabels.recipe.system_prompt}</span>
+                    <span className={labelClass}>{skillStudioDraftFieldLabel("recipe", "system_prompt")}</span>
                     <Textarea
                       value={recipe.systemPrompt}
                       disabled
                       readOnly
-                      placeholder="未匹配到系统提示词"
+                      placeholder={t("freezone.chat.skillStudio.unmatchedSystemPrompt")}
                       className={cn(textAreaClass, "min-h-24")}
                     />
                   </label>
                   <div className="grid gap-2 md:grid-cols-2">
                     <SkillStudioListField
-                      label={skillStudioDraftFieldLabels.recipe.must_have_items}
+                      label={skillStudioDraftFieldLabel("recipe", "must_have_items")}
                       value={recipe.mustHaveItems}
                       disabled
                       onChange={() => undefined}
-                      placeholder="未匹配到必含项"
+                      placeholder={t("freezone.chat.skillStudio.unmatchedMustHave")}
                     />
                     <label>
-                      <span className={labelClass}>{skillStudioDraftFieldLabels.recipe.requires_source_media}</span>
+                      <span className={labelClass}>{skillStudioDraftFieldLabel("recipe", "requires_source_media")}</span>
                       <Input
                         value={String(recipe.requiresSourceMedia)}
                         disabled
@@ -8228,36 +8337,36 @@ function SkillStudioDraftCard({
                   </div>
                   <div className="grid gap-2 md:grid-cols-3">
                     <label>
-                      <span className={labelClass}>{skillStudioDraftFieldLabels.recipe.enabled}</span>
+                      <span className={labelClass}>{skillStudioDraftFieldLabel("recipe", "enabled")}</span>
                       <Input value={String(recipe.enabled)} disabled readOnly className={fieldClass} />
                     </label>
                     <label>
-                      <span className={labelClass}>{skillStudioDraftFieldLabels.recipe.force_enhancement}</span>
+                      <span className={labelClass}>{skillStudioDraftFieldLabel("recipe", "force_enhancement")}</span>
                       <Input value={String(recipe.forceEnhancement)} disabled readOnly className={fieldClass} />
                     </label>
                     <label>
-                      <span className={labelClass}>{skillStudioDraftFieldLabels.recipe.skip_detail_check}</span>
+                      <span className={labelClass}>{skillStudioDraftFieldLabel("recipe", "skip_detail_check")}</span>
                       <Input value={String(recipe.skipDetailCheck)} disabled readOnly className={fieldClass} />
                     </label>
                   </div>
                   <div className="grid gap-2 md:grid-cols-2">
                     <label>
-                      <span className={labelClass}>{skillStudioDraftFieldLabels.recipe.planning_prompt}</span>
+                      <span className={labelClass}>{skillStudioDraftFieldLabel("recipe", "planning_prompt")}</span>
                       <Textarea
                         value={recipe.planningPrompt}
                         disabled
                         readOnly
-                        placeholder="未匹配到规划提示"
+                        placeholder={t("freezone.chat.skillStudio.unmatchedPlanningPrompt")}
                         className={textAreaClass}
                       />
                     </label>
                     <label>
-                      <span className={labelClass}>{skillStudioDraftFieldLabels.recipe.result_summary}</span>
+                      <span className={labelClass}>{skillStudioDraftFieldLabel("recipe", "result_summary")}</span>
                       <Textarea
                         value={recipe.resultSummary}
                         disabled
                         readOnly
-                        placeholder="未匹配到结果摘要"
+                        placeholder={t("freezone.chat.skillStudio.unmatchedResultSummary")}
                         className={textAreaClass}
                       />
                     </label>
@@ -8288,7 +8397,7 @@ function SkillStudioDraftCard({
               <div className="space-y-2 border-t border-white/[0.06] px-3 pb-3 pt-2">
                 <div className="grid gap-2 md:grid-cols-2">
                   <label>
-                    <span className={labelClass}>{skillStudioDraftFieldLabels.recipe.id}</span>
+                    <span className={labelClass}>{skillStudioDraftFieldLabel("recipe", "id")}</span>
                     <Input
                       value={textField(recipe.id)}
                       disabled={readOnly}
@@ -8297,7 +8406,7 @@ function SkillStudioDraftCard({
                     />
                   </label>
                   <label>
-                    <span className={labelClass}>{skillStudioDraftFieldLabels.recipe.name}</span>
+                    <span className={labelClass}>{skillStudioDraftFieldLabel("recipe", "name")}</span>
                     <Input
                       value={textField(recipe.name)}
                       disabled={readOnly}
@@ -8308,26 +8417,26 @@ function SkillStudioDraftCard({
                 </div>
                 <div className="grid gap-2 md:grid-cols-2">
                   <label>
-                    <span className={labelClass}>{skillStudioDraftFieldLabels.recipe.output_kind}</span>
+                    <span className={labelClass}>{skillStudioDraftFieldLabel("recipe", "output_kind")}</span>
                     <select
                       value={recipeOutputChoice(recipe)}
                       disabled={readOnly}
                       onChange={(changeEvent) => updateRecipeField(index, "output_kind", changeEvent.target.value)}
                       className={fieldClass}
                     >
-                      {RECIPE_OUTPUT_CHOICES.map(choice => <option key={choice} value={choice}>{({image:"图片",video:"视频",audio:"音频",text:"文本",html:"HTML 网页"})[choice]}</option>)}
+                      {RECIPE_OUTPUT_CHOICES.map(choice => <option key={choice} value={choice}>{({image: t("freezone.chat.skillStudio.outputTypeImage"), video: t("freezone.chat.skillStudio.outputTypeVideo"), audio: t("freezone.chat.skillStudio.outputTypeAudio"), text: t("freezone.chat.skillStudio.outputTypeText"), html: t("freezone.chat.skillStudio.outputTypeHtml")})[choice]}</option>)}
                     </select>
                   </label>
                   <SkillStudioListField
-                    label={skillStudioDraftFieldLabels.recipe.action_keys}
+                    label={skillStudioDraftFieldLabel("recipe", "action_keys")}
                     value={stringListField(recipe.action_keys)}
                     disabled={readOnly}
                     onChange={(value) => updateRecipeField(index, "action_keys", value)}
-                    placeholder="输入类型后按 Enter"
+                    placeholder={t("freezone.chat.skillStudio.typePlaceholder")}
                   />
                 </div>
                 <label className="block">
-                  <span className={labelClass}>{skillStudioDraftFieldLabels.recipe.system_prompt}</span>
+                  <span className={labelClass}>{skillStudioDraftFieldLabel("recipe", "system_prompt")}</span>
                   <Textarea
                     value={textField(recipe.system_prompt)}
                     disabled={readOnly}
@@ -8337,14 +8446,14 @@ function SkillStudioDraftCard({
                 </label>
                 <div className="grid gap-2 md:grid-cols-2">
                   <SkillStudioListField
-                    label={skillStudioDraftFieldLabels.recipe.must_have_items}
+                    label={skillStudioDraftFieldLabel("recipe", "must_have_items")}
                     value={stringListField(recipe.must_have_items)}
                     disabled={readOnly}
                     onChange={(value) => updateRecipeField(index, "must_have_items", value)}
-                    placeholder="输入元素后按 Enter"
+                    placeholder={t("freezone.chat.skillStudio.elementPlaceholder")}
                   />
                   <label>
-                    <span className={labelClass}>{skillStudioDraftFieldLabels.recipe.requires_source_media}</span>
+                    <span className={labelClass}>{skillStudioDraftFieldLabel("recipe", "requires_source_media")}</span>
                     <Input
                       value={String(Boolean(recipe.requires_source_media))}
                       disabled={readOnly}
@@ -8356,7 +8465,7 @@ function SkillStudioDraftCard({
                 </div>
                 <div className="grid gap-2 md:grid-cols-3">
                   <label>
-                    <span className={labelClass}>{skillStudioDraftFieldLabels.recipe.enabled}</span>
+                    <span className={labelClass}>{skillStudioDraftFieldLabel("recipe", "enabled")}</span>
                     <Input
                       value={String(recipe.enabled !== false)}
                       disabled={readOnly}
@@ -8366,7 +8475,7 @@ function SkillStudioDraftCard({
                     />
                   </label>
                   <label>
-                    <span className={labelClass}>{skillStudioDraftFieldLabels.recipe.force_enhancement}</span>
+                    <span className={labelClass}>{skillStudioDraftFieldLabel("recipe", "force_enhancement")}</span>
                     <Input
                       value={String(recipe.force_enhancement === true)}
                       disabled={readOnly}
@@ -8376,7 +8485,7 @@ function SkillStudioDraftCard({
                     />
                   </label>
                   <label>
-                    <span className={labelClass}>{skillStudioDraftFieldLabels.recipe.skip_detail_check}</span>
+                    <span className={labelClass}>{skillStudioDraftFieldLabel("recipe", "skip_detail_check")}</span>
                     <Input
                       value={String(recipe.skip_detail_check === true)}
                       disabled={readOnly}
@@ -8388,7 +8497,7 @@ function SkillStudioDraftCard({
                 </div>
                 <div className="grid gap-2 md:grid-cols-2">
                   <label>
-                    <span className={labelClass}>{skillStudioDraftFieldLabels.recipe.planning_prompt}</span>
+                    <span className={labelClass}>{skillStudioDraftFieldLabel("recipe", "planning_prompt")}</span>
                     <Textarea
                       value={textField(recipe.planning_prompt)}
                       disabled={readOnly}
@@ -8397,7 +8506,7 @@ function SkillStudioDraftCard({
                     />
                   </label>
                   <label>
-                    <span className={labelClass}>{skillStudioDraftFieldLabels.recipe.result_summary}</span>
+                    <span className={labelClass}>{skillStudioDraftFieldLabel("recipe", "result_summary")}</span>
                     <Textarea
                       value={textField(recipe.result_summary)}
                       disabled={readOnly}
@@ -8421,7 +8530,7 @@ function SkillStudioDraftCard({
           <span className="flex items-center gap-2 text-muted-foreground">
             <ChevronRight className="size-3.5 transition-transform group-open:rotate-90" />
             <Braces className="size-3.5" />
-            查看原始 JSON
+            {t("freezone.chat.skillStudio.viewRawJson")}
           </span>
           {readOnly && (
             <span className={cn(
@@ -8429,7 +8538,7 @@ function SkillStudioDraftCard({
               cancelled ? "text-muted-foreground" : "text-emerald-100/80",
             )}>
               {cancelled ? <X className="size-3" /> : <CheckCircle2 className="size-3" />}
-              {cancelled ? "已取消" : "已提交"}
+              {cancelled ? t("freezone.chat.clarification.cancelled") : t("freezone.chat.clarification.submitted")}
             </span>
           )}
         </summary>
@@ -8460,7 +8569,7 @@ function SkillStudioDraftCard({
       {jsonError && <div className="mt-2 text-xs text-amber-200">{jsonError}</div>}
       <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
         <div className="text-[11px] text-muted-foreground">
-          {incomplete ? "草稿未完成，本轮不会保存" : skillStudioDraftFooterText({ submitted, cancelled, revisionPending })}
+          {incomplete ? t("freezone.chat.skillStudio.draftIncompleteFooter") : skillStudioDraftFooterText({ submitted, cancelled, revisionPending }, t)}
         </div>
         {!incomplete && (
           <div className="flex flex-wrap items-center gap-2">
@@ -8472,7 +8581,7 @@ function SkillStudioDraftCard({
               disabled={!onStartRevision || readOnly}
               onClick={startRevision}
             >
-              让 AI 调整
+              {t("freezone.chat.skillStudio.adjustWithAi")}
             </Button>
             <Button
               type="button"
@@ -8482,7 +8591,7 @@ function SkillStudioDraftCard({
               disabled={readOnly}
               onClick={cancelDraft}
             >
-              取消
+              {t("freezone.chat.canvasConfirmation.refuse")}
             </Button>
             <Button
               type="button"
@@ -8491,7 +8600,7 @@ function SkillStudioDraftCard({
               disabled={!onSubmit || readOnly}
               onClick={submitDraft}
             >
-              确认添加
+              {t("freezone.chat.skillStudio.confirmAdd")}
             </Button>
           </div>
         )}
@@ -8501,10 +8610,11 @@ function SkillStudioDraftCard({
 }
 
 function SkillStudioStatusCard({ event }: { event: Extract<SkillStudioUiEvent, { type: "skill_studio.status" }> }) {
+  const { t } = useTranslation();
   return (
     <div className="flex items-center gap-2 px-1 py-1 text-xs text-muted-foreground">
       <ListTree className="size-3.5 shrink-0 text-cyan-100/70" />
-      <span>{event.message || "正在进入 Skill Studio..."}</span>
+      <span>{event.message || t("freezone.chat.skillStudio.enteringSkillStudio")}</span>
       <DotsIndicator />
     </div>
   );
@@ -9071,7 +9181,7 @@ export const MessageBubble = memo(function MessageBubble({
                         pendingCanvasCommandApprovalMatches(item, approval),
                       );
                       if (!stillPending) {
-                        const expiredFeedback = expiredCanvasApprovalFeedback(approval);
+                        const expiredFeedback = expiredCanvasApprovalFeedback(approval, t);
                         return expiredFeedback
                           ? <CanvasCommandFeedbackCard
                               key={part.id}
@@ -9219,7 +9329,7 @@ export const MessageBubble = memo(function MessageBubble({
                 ) : waitingForUserReply ? (
                     <div className="inline-flex items-center gap-2 rounded-full border border-white/[0.08] bg-white/[0.035] px-3 py-1.5 text-xs text-muted-foreground">
                       <ListTree className="size-3.5" />
-                      <span>正在等待您的回复</span>
+                      <span>{t("freezone.chat.waitingForReply")}</span>
                     </div>
                 ) : null}
               </div>
@@ -11592,53 +11702,56 @@ function compactJsonValue(value: unknown): string {
   }
 }
 
-function nodeTypeLabel(nodeType: string | undefined): string {
-  if (!nodeType) return "节点";
-  if (nodeType === "imageGenNode") return "图片节点";
-  if (nodeType === "videoNode") return "视频节点";
-  if (nodeType === "textAnnotationNode") return "文本节点";
-  if (nodeType === "audioNode") return "音频节点";
-  if (nodeType === "scriptNode") return "脚本节点";
+function nodeTypeLabel(nodeType: string | undefined, t?: TFunction): string {
+  const tr = clarificationText(t);
+  if (!nodeType) return tr("freezone.chat.canvasPlan.nodeType.node", { defaultValue: "节点" });
+  if (nodeType === "imageGenNode") return tr("freezone.chat.canvasPlan.nodeType.imageNode", { defaultValue: "图片节点" });
+  if (nodeType === "videoNode") return tr("freezone.chat.canvasPlan.nodeType.videoNode", { defaultValue: "视频节点" });
+  if (nodeType === "textAnnotationNode") return tr("freezone.chat.canvasPlan.nodeType.textNode", { defaultValue: "文本节点" });
+  if (nodeType === "audioNode") return tr("freezone.chat.canvasPlan.nodeType.audioNode", { defaultValue: "音频节点" });
+  if (nodeType === "scriptNode") return tr("freezone.chat.canvasPlan.nodeType.scriptNode", { defaultValue: "脚本节点" });
   return nodeType;
 }
 
-function canvasCommandPlanLabel(command: CanvasChatCommand): string {
+function canvasCommandPlanLabel(command: CanvasChatCommand, t?: TFunction): string {
+  const tr = clarificationText(t);
   switch (command.type) {
     case "create_node":
-      return `创建${nodeTypeLabel(command.node_type)}`;
+      return tr("freezone.chat.canvasPlan.commandLabel.createNode", { defaultValue: "创建{{nodeType}}", nodeType: nodeTypeLabel(command.node_type, t) });
     case "add_next_node":
-      return `添加下游${nodeTypeLabel(command.node_type)}`;
+      return tr("freezone.chat.canvasPlan.commandLabel.addNextNode", { defaultValue: "添加下游{{nodeType}}", nodeType: nodeTypeLabel(command.node_type, t) });
     case "update_node_data":
-      return "更新节点参数";
+      return tr("freezone.chat.canvasPlan.commandLabel.updateNodeData", { defaultValue: "更新节点参数" });
     case "delete_nodes":
-      return "删除节点";
+      return tr("freezone.chat.canvasPlan.commandLabel.deleteNodes", { defaultValue: "删除节点" });
     case "delete_edges":
-      return "断开连接";
+      return tr("freezone.chat.canvasPlan.commandLabel.deleteEdges", { defaultValue: "断开连接" });
     case "create_edge":
-      return "创建连接";
+      return tr("freezone.chat.canvasPlan.commandLabel.createEdge", { defaultValue: "创建连接" });
     case "layout_nodes":
-      return "整理布局";
+      return tr("freezone.chat.canvasPlan.commandLabel.layoutNodes", { defaultValue: "整理布局" });
     case "group_nodes":
-      return "创建普通组";
+      return tr("freezone.chat.canvasPlan.commandLabel.groupNodes", { defaultValue: "创建普通组" });
     case "move_nodes":
-      return "移动节点";
+      return tr("freezone.chat.canvasPlan.commandLabel.moveNodes", { defaultValue: "移动节点" });
     case "select_nodes":
-      return "选中节点";
+      return tr("freezone.chat.canvasPlan.commandLabel.selectNodes", { defaultValue: "选中节点" });
     case "run_node_action":
-      if (command.action === "generate_image") return "生成图片";
-      if (command.action === "generate_video") return "生成视频";
-      if (command.action === "open_video_compose_modal") return "打开视频合成与剪辑";
-      if (command.action === "auto_compose_video") return "自动合成视频";
-      if (command.action === "open_video_viewer") return "打开视频";
-      return "执行节点动作";
+      if (command.action === "generate_image") return tr("freezone.chat.canvasPlan.commandLabel.generateImage", { defaultValue: "生成图片" });
+      if (command.action === "generate_video") return tr("freezone.chat.canvasPlan.commandLabel.generateVideo", { defaultValue: "生成视频" });
+      if (command.action === "open_video_compose_modal") return tr("freezone.chat.canvasPlan.commandLabel.openVideoComposeModal", { defaultValue: "打开视频合成与剪辑" });
+      if (command.action === "auto_compose_video") return tr("freezone.chat.canvasPlan.commandLabel.autoComposeVideo", { defaultValue: "自动合成视频" });
+      if (command.action === "open_video_viewer") return tr("freezone.chat.canvasPlan.commandLabel.openVideoViewer", { defaultValue: "打开视频" });
+      return tr("freezone.chat.canvasPlan.commandLabel.runNodeAction", { defaultValue: "执行节点动作" });
     case "open_mainline_projection":
-      return "打开主线虾画";
+      return tr("freezone.chat.canvasPlan.commandLabel.openMainlineProjection", { defaultValue: "打开主线虾画" });
     default:
-      return "画布操作";
+      return tr("freezone.chat.canvasPlan.commandLabel.canvasOperation", { defaultValue: "画布操作" });
   }
 }
 
-function canvasCommandPlanPrimary(command: CanvasChatCommand): string | undefined {
+function canvasCommandPlanPrimary(command: CanvasChatCommand, t?: TFunction): string | undefined {
+  const tr = clarificationText(t);
   switch (command.type) {
     case "create_node":
       // 规范化补的合成 client_id 只是内部标识，不展示给用户。
@@ -11651,13 +11764,13 @@ function canvasCommandPlanPrimary(command: CanvasChatCommand): string | undefine
     case "open_mainline_projection":
       if (command.request.scope === "beat") return `EP${command.request.episode ?? ""} / Beat ${command.request.beat ?? ""}`;
       if (command.request.scope === "episode") return `EP${command.request.episode ?? ""}`;
-      return command.request.asset_id ?? command.request.identity_id ?? command.request.character ?? command.request.asset_kind ?? "主线素材";
+      return command.request.asset_id ?? command.request.identity_id ?? command.request.character ?? command.request.asset_kind ?? tr("freezone.chat.canvasPlan.detailPrefix.mainlineAssets", { defaultValue: "主线素材" });
     case "delete_nodes":
     case "select_nodes":
     case "group_nodes":
       return command.node_ids.join(", ");
     case "layout_nodes":
-      return command.node_ids?.length ? command.node_ids.join(", ") : "当前画布";
+      return command.node_ids?.length ? command.node_ids.join(", ") : tr("freezone.chat.canvasPlan.detailPrefix.currentCanvas", { defaultValue: "当前画布" });
     case "create_edge":
       return `${command.source} -> ${command.target}`;
     case "delete_edges":
@@ -11673,50 +11786,52 @@ function canvasCommandPlanPrimary(command: CanvasChatCommand): string | undefine
   }
 }
 
-function canvasCommandPlanDetails(command: CanvasChatCommand): string[] {
+function canvasCommandPlanDetails(command: CanvasChatCommand, t?: TFunction): string[] {
+  const tr = clarificationText(t);
+  const colon = isEnglishUi() ? ": " : "：";
   const details: string[] = [];
   if (command.type === "create_node" || command.type === "add_next_node") {
     if (command.type === "create_node" && command.position) {
-      details.push(`位置：${Math.round(command.position.x)}, ${Math.round(command.position.y)}`);
+      details.push(`${tr("freezone.chat.canvasPlan.detailPrefix.position", { defaultValue: "位置：" })}${Math.round(command.position.x)}, ${Math.round(command.position.y)}`);
     }
     if (command.type === "add_next_node") {
-      details.push(`上游：${command.source_node_id}`);
-      if (command.connect) details.push("自动连线");
+      details.push(`${tr("freezone.chat.canvasPlan.detailPrefix.upstream", { defaultValue: "上游：" })}${command.source_node_id}`);
+      if (command.connect) details.push(tr("freezone.chat.canvasPlan.detailPrefix.autoConnect", { defaultValue: "自动连线" }));
     }
     for (const key of ["displayName", "title", "content", "text", "prompt", "model", "size", "requestAspectRatio", "aspectRatio", "count"] as const) {
       const value = command.data?.[key as keyof typeof command.data];
-      if (value !== undefined && value !== "") details.push(`${key}：${compactJsonValue(value)}`);
+      if (value !== undefined && value !== "") details.push(`${key}${colon}${compactJsonValue(value)}`);
     }
   } else if (command.type === "update_node_data") {
     for (const [key, value] of Object.entries(command.data)) {
       if (value !== undefined && value !== "") details.push(`${key} -> ${compactJsonValue(value)}`);
     }
   } else if (command.type === "run_node_action") {
-    details.push(`动作：${command.action}`);
+    details.push(`${tr("freezone.chat.canvasPlan.detailPrefix.action", { defaultValue: "动作：" })}${command.action}`);
   } else if (command.type === "open_mainline_projection") {
-    details.push(`范围：${command.request.scope}`);
-    if (typeof command.request.episode === "number") details.push(`集数：${command.request.episode}`);
-    if (typeof command.request.beat === "number") details.push(`Beat：${command.request.beat}`);
-    if (command.request.primary_slot) details.push(`目标：${command.request.primary_slot}`);
-    if (command.request.asset_kind) details.push(`素材类型：${command.request.asset_kind}`);
+    details.push(`${tr("freezone.chat.canvasPlan.detailPrefix.scope", { defaultValue: "范围：" })}${command.request.scope}`);
+    if (typeof command.request.episode === "number") details.push(`${tr("freezone.chat.canvasPlan.detailPrefix.episode", { defaultValue: "集数：" })}${command.request.episode}`);
+    if (typeof command.request.beat === "number") details.push(`Beat${colon}${command.request.beat}`);
+    if (command.request.primary_slot) details.push(`${tr("freezone.chat.canvasPlan.detailPrefix.target", { defaultValue: "目标：" })}${command.request.primary_slot}`);
+    if (command.request.asset_kind) details.push(`${tr("freezone.chat.canvasPlan.detailPrefix.assetType", { defaultValue: "素材类型：" })}${command.request.asset_kind}`);
   } else if (command.type === "create_edge") {
-    details.push(`link_type：${command.link_type}`);
+    details.push(`link_type${colon}${command.link_type}`);
   } else if (command.type === "layout_nodes") {
-    details.push(`模式：${command.mode}`);
-    details.push(command.node_ids?.length ? `数量：${command.node_ids.length}` : "范围：当前画布全部节点");
+    details.push(`${tr("freezone.chat.canvasPlan.detailPrefix.mode", { defaultValue: "模式：" })}${command.mode}`);
+    details.push(command.node_ids?.length ? `${tr("freezone.chat.canvasPlan.detailPrefix.count", { defaultValue: "数量：" })}${command.node_ids.length}` : `${tr("freezone.chat.canvasPlan.detailPrefix.scope", { defaultValue: "范围：" })}${tr("freezone.chat.canvasPlan.detailPrefix.allNodes", { defaultValue: "当前画布全部节点" })}`);
   } else if (command.type === "group_nodes") {
-    details.push(`数量：${command.node_ids.length}`);
-    if (command.label) details.push(`名称：${command.label}`);
+    details.push(`${tr("freezone.chat.canvasPlan.detailPrefix.count", { defaultValue: "数量：" })}${command.node_ids.length}`);
+    if (command.label) details.push(`${tr("freezone.chat.canvasPlan.detailPrefix.name", { defaultValue: "名称：" })}${command.label}`);
   } else if (command.type === "move_nodes") {
     const moveCount = new Set([
       ...Object.keys(command.positions ?? {}),
       ...Object.keys(command.deltas ?? {}),
     ]).size;
-    details.push(`数量：${moveCount}`);
+    details.push(`${tr("freezone.chat.canvasPlan.detailPrefix.count", { defaultValue: "数量：" })}${moveCount}`);
   } else if (command.type === "delete_nodes") {
-    details.push(`数量：${command.node_ids.length}`);
+    details.push(`${tr("freezone.chat.canvasPlan.detailPrefix.count", { defaultValue: "数量：" })}${command.node_ids.length}`);
   } else if (command.type === "delete_edges") {
-    details.push(`数量：${(command.edge_ids?.length ?? 0) + (command.pairs?.length ?? 0)}`);
+    details.push(`${tr("freezone.chat.canvasPlan.detailPrefix.count", { defaultValue: "数量：" })}${(command.edge_ids?.length ?? 0) + (command.pairs?.length ?? 0)}`);
   }
   return details;
 }
@@ -11725,7 +11840,7 @@ function canvasCommandIsDestructive(command: CanvasChatCommand): boolean {
   return command.type === "delete_nodes" || command.type === "delete_edges";
 }
 
-function canvasCommandPlansFromEnvelopes(envelopes: CanvasChatCommandEnvelope[] | undefined): CanvasCommandPlan[] {
+function canvasCommandPlansFromEnvelopes(envelopes: CanvasChatCommandEnvelope[] | undefined, t?: TFunction): CanvasCommandPlan[] {
   if (!envelopes || envelopes.length === 0) return [];
   const plans: CanvasCommandPlan[] = [];
   let index = 0;
@@ -11734,12 +11849,12 @@ function canvasCommandPlansFromEnvelopes(envelopes: CanvasChatCommandEnvelope[] 
       plans.push({
         index,
         type: command.type,
-        label: canvasCommandPlanLabel(command),
-        primary: canvasCommandPlanPrimary(command),
+        label: canvasCommandPlanLabel(command, t),
+        primary: canvasCommandPlanPrimary(command, t),
         ...(command.type === "run_node_action"
           ? { nodeId: command.node_id, action: command.action }
           : {}),
-        details: canvasCommandPlanDetails(command),
+        details: canvasCommandPlanDetails(command, t),
         destructive: canvasCommandIsDestructive(command),
       });
       index += 1;
@@ -11810,7 +11925,7 @@ function canvasCommandResultFromWorkflowRun(
     const actionName = step.action
       || (command?.type === "run_node_action" ? command.action : undefined)
       || plan?.action
-      || plan?.details.find((detail) => detail.startsWith("动作："))?.slice("动作：".length);
+      || plan?.details.find((detail) => detail.startsWith("动作：") || detail.startsWith("Action: "))?.replace(/^(动作：|Action: )/, "");
     const matchingActions = nodeId
       ? run.actions.filter((item) => item.node_id === nodeId && (!actionName || item.action === actionName))
       : [];
@@ -12416,7 +12531,7 @@ function canvasCommandApplyResultFromUnknown(value: unknown): CanvasChatCommandA
   };
 }
 
-function canvasCommandFeedbacksFromUiEvents(events: unknown[] | undefined): CanvasCommandFeedback[] {
+function canvasCommandFeedbacksFromUiEvents(events: unknown[] | undefined, t?: TFunction): CanvasCommandFeedback[] {
   if (!events || events.length === 0) return [];
   const feedbacks: CanvasCommandFeedback[] = [];
   for (const event of events) {
@@ -12438,7 +12553,7 @@ function canvasCommandFeedbacksFromUiEvents(events: unknown[] | undefined): Canv
         undefined,
         key,
         result,
-        canvasCommandPlansFromEnvelopes(envelopes),
+        canvasCommandPlansFromEnvelopes(envelopes, t),
         anchorTextPrefix,
         canvasSurfaceEventOrder(value, feedbacks.length),
       );
@@ -12574,8 +12689,8 @@ function canvasCommandFeedbackIsValidationOnly(feedback: CanvasCommandFeedback):
     feedback.applied === 0 &&
     feedback.openedUiActions === 0 &&
     steps.length > 0 &&
-    !steps.some((step) => step.label === "已取消") &&
-    steps.every((step) => step.type === "validate" || step.label === "校验画布命令")
+    !steps.some((step) => step.label === "已取消" || step.label === "Cancelled") &&
+    steps.every((step) => step.type === "validate" || step.label === "校验画布命令" || step.label === "Validate canvas commands")
   );
 }
 
@@ -13005,7 +13120,7 @@ export function SuperChatPanel({
     void apiCall<AgentCapabilityPriceReference>("chat/agent-capability-price-reference")
       .then(setAgentBillingReference)
       .catch(() => {
-        toast.error("暂时无法加载虾导计费说明");
+        toast.error(t("freezone.chat.directorAuto.billingLoadFailed"));
       });
   }, [agentBillingReference, isFreezoneLayout]);
   const shouldStickToBottomRef = useRef(true);
@@ -13386,7 +13501,7 @@ export function SuperChatPanel({
     const byMessageId: Record<string, CanvasCommandFeedback[]> = {};
     if (variant !== "freezone") return byMessageId;
     for (const message of chat.messages) {
-      const feedbacks = canvasCommandFeedbacksFromUiEvents(messageUiEvents(message));
+      const feedbacks = canvasCommandFeedbacksFromUiEvents(messageUiEvents(message), t);
       if (feedbacks.length === 0) continue;
       mergeCanvasCommandFeedbackRecord(byMessageId, message.id, feedbacks);
       mergeCanvasCommandFeedbackRecord(byMessageId, message.turnId, feedbacks);
@@ -13528,15 +13643,17 @@ export function SuperChatPanel({
           episode: detail.episode ?? current.episode ?? 1,
           voicePolicy: detail.voicePolicy ?? current.voicePolicy,
         });
-        toast.info("本集自动已暂停后续推进，等待你确认是否修改", { duration: 10000 });
+        toast.info(t("freezone.chat.directorAuto.episodeAutoPaused"), { duration: 10000 });
         return;
       }
       if (detail?.status === "paused" || detail?.status === "completed") {
         updateDirectorRunState(defaultDirectorRunState());
         if (detail.status === "completed") {
-          toast.success(`第 ${detail.episode ?? "当前"} 集自动制作已完成`);
+          toast.success(detail.episode
+            ? t("freezone.chat.directorAuto.episodeAutoCompleted", { episode: detail.episode })
+            : t("freezone.chat.directorAuto.episodeAutoCompletedCurrent"));
         } else if (detail.message && detail.message !== "用户切换为手动模式") {
-          toast.error("本集自动已暂停");
+          toast.error(t("freezone.chat.directorAuto.episodeAutoPausedShort"));
         }
       }
     };
@@ -13547,7 +13664,7 @@ export function SuperChatPanel({
   const setDirectorExecutionMode = useCallback((mode: DirectorRunMode) => {
     if (mode === "episode_auto") {
       updateDirectorRunState(activateDirectorEpisodeAuto());
-      toast.success("已选择本集自动；发送开始指令后，还需再次确认才会执行", {
+      toast.success(t("freezone.chat.directorAuto.episodeAutoSelected"), {
         duration: 10000,
       });
     } else {
@@ -13555,7 +13672,7 @@ export function SuperChatPanel({
       const project = params.project?.trim();
       if (project) {
         void pauseDirectorAutoServer(project).catch(() => {
-          toast.error("已切换为手动模式，但后端自动任务暂停请求未送达");
+          toast.error(t("freezone.chat.directorAuto.episodeAutoManualSwitchFailed"));
         });
       }
     }
@@ -13633,8 +13750,11 @@ export function SuperChatPanel({
       const label = buildChatTaskLabel(event.task, t);
       const text =
         event.type === "task_complete"
-          ? `✅ ${label}已完成。你可以让我查看结果，或继续下一步。`
-          : `${label}失败：${event.task.error || event.task.current_task || "未提供具体错误原因"}\n请根据错误处理前置条件后再继续。`;
+          ? t("freezone.chat.directorAuto.taskCompleted", { label })
+          : t("freezone.chat.directorAuto.taskFailed", {
+              label,
+              error: event.task.error || event.task.current_task || t("freezone.chat.directorAuto.taskFailedFallback"),
+            });
       void chat.appendNotification(text);
     });
   }, [chat.appendNotification, params.project, t, taskEventBus, variant]);
@@ -13722,7 +13842,7 @@ export function SuperChatPanel({
       expiresAt,
       envelopes: detail.envelopes,
       commandCount,
-      plans: canvasCommandPlansFromEnvelopes(detail.envelopes),
+      plans: canvasCommandPlansFromEnvelopes(detail.envelopes, t),
       externalMcpCommand: detail.externalMcpCommand === true,
       serverApproved: detail.restoredFromHistory ? false : detail.serverApproved,
       requiresUserChoice: detail.requiresUserChoice === true,
@@ -13840,7 +13960,7 @@ export function SuperChatPanel({
     });
     const feedbackKey = canvasCommandFeedbackKey(detail.bridgeKey, turnId, detail.receivedAt);
     const envelopes = detail.envelopes ?? [];
-    const plans = canvasCommandPlansFromEnvelopes(envelopes);
+    const plans = canvasCommandPlansFromEnvelopes(envelopes, t);
     appendCanvasCommandFeedback(
       messageId,
       feedbackKey,
@@ -15354,13 +15474,15 @@ export function SuperChatPanel({
             await startDirectorAutoServer(project, state.episode ?? 1, voicePolicy);
           } catch (error) {
             toast.error(
-              `无法启动本集自动：${error instanceof Error ? error.message : "后端请求失败"}`,
+              t("freezone.chat.directorAuto.episodeAutoStartFailed", {
+                error: error instanceof Error ? error.message : t("freezone.chat.directorAuto.episodeAutoStartFailedFallback"),
+              }),
             );
             return false;
           }
           const confirmed = confirmDirectorEpisodeAuto({ ...state, voicePolicy });
           updateDirectorRunState(confirmed);
-          toast.success("本集自动已启动，正在检查当前进度", { duration: 10000 });
+          toast.success(t("freezone.chat.directorAuto.episodeAutoStarted"), { duration: 10000 });
           nextText = directorAutoRunTransportText(nextText);
         } else if (state.confirmationStage === "awaiting_intervention") {
           nextText = directorAutoInterventionTransportText(nextText);
@@ -15663,11 +15785,11 @@ export function SuperChatPanel({
     selections: SkillStudioQuestionSelections,
   ): Promise<boolean> => {
     if (!chat.busy || !event.turn_id || event.turn_id !== chat.activeTurnId) {
-      toast.error("这轮对话已结束，不能继续提交这个问题");
+      toast.error(t("freezone.chat.directorAuto.turnEnded"));
       return false;
     }
     if (!event.bridge_key) {
-      toast.error("Skill Studio 桥接信息缺失，请重试");
+      toast.error(t("freezone.chat.directorAuto.skillStudioBridgeMissing"));
       return false;
     }
     try {
@@ -15677,7 +15799,7 @@ export function SuperChatPanel({
           ? "skip"
           : "submit";
       const payload = {
-        ...buildSkillStudioQuestionToolResultForTest(event, selections),
+        ...buildSkillStudioQuestionToolResultForTest(event, selections, t),
         action,
         skill_studio_status: action === "submit" ? "answered" : action,
         client_debug: skillStudioResultClientDebug(event, "questions_card_ws", {
@@ -15687,13 +15809,13 @@ export function SuperChatPanel({
         }),
         message:
           action === "recommended"
-            ? buildSkillStudioRecommendedResponse(event)
+            ? buildSkillStudioRecommendedResponse(event, t)
             : action === "skip"
-              ? buildSkillStudioSkipResponse(event)
-              : buildSkillStudioQuestionResponseForTest(event, selections),
+              ? buildSkillStudioSkipResponse(event, t)
+              : buildSkillStudioQuestionResponseForTest(event, selections, t),
       };
       if (!chat.submitSkillStudioResult(payload)) {
-        toast.error("Skill Studio 连接未就绪，请重试");
+        toast.error(t("freezone.chat.directorAuto.skillStudioNotReady"));
         return false;
       }
       if (event.turn_id) {
@@ -15712,7 +15834,7 @@ export function SuperChatPanel({
       return true;
     } catch (error) {
       console.error("[superchat] skill studio result submit failed", error);
-      toast.error("提交 Skill Studio 选择失败，请重试");
+      toast.error(t("freezone.chat.directorAuto.submitSkillStudioFailed"));
       return false;
     }
   }, [chat, updateChatUiEvent]);
@@ -15722,11 +15844,11 @@ export function SuperChatPanel({
     answers: AssistantClarificationAnswers,
   ): Promise<boolean> => {
     if (!chat.busy || !event.turn_id || event.turn_id !== chat.activeTurnId) {
-      toast.error("这轮对话已结束，不能继续提交这个问题");
+      toast.error(t("freezone.chat.directorAuto.turnEnded"));
       return false;
     }
     if (!event.bridge_key) {
-      toast.error("补充信息桥接缺失，请重试");
+      toast.error(t("freezone.chat.directorAuto.clarificationBridgeMissing"));
       return false;
     }
     const submissionKey = `${event.turn_id}:${event.bridge_key}`;
@@ -15746,7 +15868,7 @@ export function SuperChatPanel({
         event, answers,
       )) {
         submittedAssistantClarificationKeysRef.current.delete(submissionKey);
-        toast.error("推荐配置缺少有效参数，请重新选择或刷新后重试");
+        toast.error(t("freezone.chat.directorAuto.recommendedMissingParams"));
         return false;
       }
       const skillStudioRevision = activeAssistantClarificationIsSkillStudioRevision(visibleMessages, event);
@@ -15757,7 +15879,7 @@ export function SuperChatPanel({
           canvasId: effectiveFreezoneCanvasId || undefined,
           agentId: effectiveFreezoneAgentId || undefined,
           cancelMessage: t("freezone.chat.generationParams.catalog.exitMessage"),
-        }),
+        }, t),
         action,
         clarification_status: action === "submit" ? "answered" : action === "cancel" ? "cancelled" : action,
         questions: event.questions,
@@ -15835,12 +15957,12 @@ export function SuperChatPanel({
     draftPayload: Record<string, unknown>,
   ): Promise<boolean> => {
     if (!event.bridge_key) {
-      toast.error("Skill Studio 桥接信息缺失，请重试");
+      toast.error(t("freezone.chat.directorAuto.skillStudioBridgeMissing"));
       return false;
     }
     try {
       const payload = {
-        ...buildSkillStudioDraftToolResultForTest(event, draftPayload),
+        ...buildSkillStudioDraftToolResultForTest(event, draftPayload, t),
         client_debug: skillStudioResultClientDebug(event, "draft_confirm_add_http", {
           active_turn_id: chat.activeTurnId,
           chat_busy: chat.busy,
@@ -15861,9 +15983,9 @@ export function SuperChatPanel({
         json: payload,
       });
       if (!result.ok || !result.saved_to_catalog) {
-        const errorText = result.errors?.find(Boolean) || result.message || "后端没有确认保存成功";
+        const errorText = result.errors?.find(Boolean) || result.message || t("freezone.chat.directorAuto.addSkillFailedFallback");
         const partiallySaved = Boolean(result.saved_skill_ids?.length || result.saved_recipe_ids?.length);
-        toast.error(partiallySaved && result.message ? result.message : `添加 Skill / Recipe 失败：${errorText}`);
+        toast.error(partiallySaved && result.message ? result.message : t("freezone.chat.directorAuto.addSkillFailed", { error: errorText }));
         return false;
       }
       payload.saved_skill_ids = result.saved_skill_ids ?? payload.saved_skill_ids;
@@ -15904,11 +16026,11 @@ export function SuperChatPanel({
             }),
           );
       }
-      toast.success("已添加到虾画 Skills / Recipes");
+      toast.success(t("freezone.chat.clarification.draftSaved"));
       return true;
     } catch (error) {
       console.error("[superchat] skill studio draft submit failed", error);
-      toast.error("添加 Skill / Recipe 失败，请检查必填字段后重试");
+      toast.error(t("freezone.chat.directorAuto.addSkillFailedCheck"));
       return false;
     }
   }, [chat.activeTurnId, chat.busy, queryClient, updateChatUiEvent]);
@@ -15935,19 +16057,19 @@ export function SuperChatPanel({
   ): Promise<boolean> => {
     if (!event.turn_id) return false;
     if (!event.bridge_key) {
-      toast.error("Skill Studio 桥接信息缺失，请重试");
+      toast.error(t("freezone.chat.directorAuto.skillStudioBridgeMissing"));
       return false;
     }
     try {
       const payload = {
-        ...buildSkillStudioDraftRevisionToolResultForTest(event, draftPayload),
+        ...buildSkillStudioDraftRevisionToolResultForTest(event, draftPayload, t),
         client_debug: skillStudioResultClientDebug(event, "draft_start_revision_button_ws", {
           active_turn_id: chat.activeTurnId,
           chat_busy: chat.busy,
         }),
       };
       if (!chat.submitSkillStudioResult(payload)) {
-        toast.error("Skill Studio 连接未就绪，请重试");
+        toast.error(t("freezone.chat.directorAuto.skillStudioNotReady"));
         return false;
       }
       updateChatUiEvent(
@@ -15965,7 +16087,7 @@ export function SuperChatPanel({
       return true;
     } catch (error) {
       console.error("[superchat] skill studio draft revision submit failed", error);
-      toast.error("启动草稿调整失败，请重试");
+      toast.error(t("freezone.chat.directorAuto.startRevisionFailed"));
       return false;
     }
   }, [chat, updateChatUiEvent]);
@@ -15976,18 +16098,18 @@ export function SuperChatPanel({
   ) => {
     if (!event.turn_id) return;
     if (!event.bridge_key) {
-      toast.error("Skill Studio 桥接信息缺失，请重试");
+      toast.error(t("freezone.chat.directorAuto.skillStudioBridgeMissing"));
       return;
     }
     const payload = {
-      ...buildSkillStudioDraftCancelToolResultForTest(event),
+      ...buildSkillStudioDraftCancelToolResultForTest(event, t),
       client_debug: skillStudioResultClientDebug(event, "draft_cancel_button_ws", {
         active_turn_id: chat.activeTurnId,
         chat_busy: chat.busy,
       }),
     };
     if (!chat.submitSkillStudioResult(payload)) {
-      toast.error("Skill Studio 连接未就绪，请重试");
+      toast.error(t("freezone.chat.directorAuto.skillStudioNotReady"));
       return;
     }
     updateChatUiEvent(
@@ -16189,8 +16311,8 @@ export function SuperChatPanel({
               variant="ghost"
               size="icon-sm"
               onClick={() => setAgentBillingOpen(true)}
-              aria-label="虾导计费说明"
-              title="虾导计费说明"
+              aria-label={t("freezone.chat.billing.dialogAria")}
+              title={t("freezone.chat.billing.dialogAria")}
               className="text-muted-foreground hover:bg-white/[0.08] hover:text-foreground"
             >
               <Gauge className="size-4" />
@@ -16313,7 +16435,7 @@ export function SuperChatPanel({
                           ),
                       )}
                       canvasCommandFeedbacks={mergeCanvasCommandFeedbackSources(
-                        canvasCommandFeedbacksFromUiEvents(messageUiEvents(message)),
+                        canvasCommandFeedbacksFromUiEvents(messageUiEvents(message), t),
                         mergeCanvasCommandFeedbackSources(
                           canvasCommandFeedbackByMessageId[message.id],
                           message.turnId ? canvasCommandFeedbackByMessageId[message.turnId] : undefined,
@@ -16445,8 +16567,8 @@ export function SuperChatPanel({
                 "absolute bottom-4 left-1/2 z-30 h-9 w-9 -translate-x-1/2 rounded-full border border-white/12 bg-background/88 text-foreground shadow-lg backdrop-blur transition hover:bg-background",
                 isFreezoneLayout && "bottom-3",
               )}
-              title="回到底部"
-              aria-label="回到底部"
+              title={t("freezone.chat.backToBottom")}
+              aria-label={t("freezone.chat.backToBottom")}
               onClick={() => scrollToChatBottom("auto", { force: true })}
             >
               <ArrowDown className="h-4 w-4" />
@@ -16468,7 +16590,7 @@ export function SuperChatPanel({
                   aria-live="polite"
                 >
                   <span className="size-1.5 shrink-0 animate-pulse rounded-full bg-success" />
-                  <span>本集自动正在运行，将按任务状态继续推进</span>
+                  <span>{t("freezone.chat.episodeAutoRunning")}</span>
                 </div>
               ) : (
                 <ComposerWaitingStatus
@@ -17267,10 +17389,10 @@ export function SuperChatPanel({
         <Dialog open={agentBillingOpen} onOpenChange={setAgentBillingOpen}>
           <DialogContent className="w-[calc(100vw-2rem)] border-white/10 bg-background/95 p-0 backdrop-blur-xl sm:max-w-[min(46.08rem,calc(100vw-3rem))]">
             <div className="border-b border-white/10 px-5 py-4">
-              <DialogTitle>虾导 Agent 积分参考</DialogTitle>
+              <DialogTitle>{t("freezone.chat.billing.title")}</DialogTitle>
               <p className="mt-1 text-xs leading-5 text-muted-foreground">
                 {agentBillingReference?.note
-                  ?? "普通聊天和画布操作免费；仅高级 Agent 能力交付计费。"}
+                  ?? t("freezone.chat.billing.noteFallback")}
               </p>
             </div>
             <div className="max-h-[65vh] overflow-auto px-5 py-4">
@@ -17278,9 +17400,9 @@ export function SuperChatPanel({
                 <table className="w-full min-w-[640px] table-fixed text-left text-xs">
                   <thead className="bg-white/[0.05] text-muted-foreground">
                     <tr>
-                      <th className="w-[24%] px-3 py-2.5 font-medium">任务</th>
-                      <th className="w-[54%] px-3 py-2.5 font-medium">包含内容</th>
-                      <th className="w-[22%] px-3 py-2.5 font-medium">Agent 计费</th>
+                      <th className="w-[24%] px-3 py-2.5 font-medium">{t("freezone.chat.billing.headerTask")}</th>
+                      <th className="w-[54%] px-3 py-2.5 font-medium">{t("freezone.chat.billing.headerIncludes")}</th>
+                      <th className="w-[22%] px-3 py-2.5 font-medium">{t("freezone.chat.billing.headerBilling")}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-white/[0.07]">
@@ -17300,7 +17422,7 @@ export function SuperChatPanel({
                     {!agentBillingReference && (
                       <tr>
                         <td colSpan={3} className="px-3 py-8 text-center text-muted-foreground">
-                          正在加载计费参考…
+                          {t("freezone.chat.billing.loading")}
                         </td>
                       </tr>
                     )}
@@ -17308,9 +17430,7 @@ export function SuperChatPanel({
                 </table>
               </div>
               <p className="mt-3 text-[11px] leading-5 text-muted-foreground">
-                表中区间用于提前了解消耗量级，最终以系统配置的功能价格和实际成功交付数量为准。
-                图片、音频和视频等模型生成费用不包含在本表中，仍由 NewAPI 按原有规则独立结算。
-                工具重试和内部多步调用不会重复收取 Agent 交付费用。
+                {t("freezone.chat.billing.footnote")}
               </p>
             </div>
           </DialogContent>

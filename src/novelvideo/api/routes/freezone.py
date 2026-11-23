@@ -16400,8 +16400,13 @@ async def get_workflow_capabilities(project: str, user: dict = Depends(get_api_u
     }
 
 
-async def _check_workflow_runtime(compiled: dict, *, project: str, user: dict) -> dict:
+async def _check_workflow_runtime(
+    compiled: dict, *, project: str, user: dict, state_dir: str | Path | None = None,
+) -> dict:
     """Resolve catalogs with request identity; never trust caller preflight evidence."""
+    language = "zh"
+    if state_dir is not None:
+        language = await asyncio.to_thread(recorded_ui_locale, state_dir) or "zh"
     from novelvideo.freezone.workflow_preflight import evaluate_workflow_preflight
     from novelvideo.api.routes.tasks import get_project_task_limits
 
@@ -16442,7 +16447,7 @@ async def _check_workflow_runtime(compiled: dict, *, project: str, user: dict) -
             video_model_reselection_clarification,
         )
 
-        clarification = generation_clarification_request(preflight)
+        clarification = generation_clarification_request(preflight, language)
         if clarification is not None:
             # Missing generation choices are a user question, not a dead end:
             # return the standard clarification structure the agent recovers
@@ -16474,6 +16479,7 @@ async def _check_workflow_runtime(compiled: dict, *, project: str, user: dict) -
             preflight,
             compiled,
             [item for item in video_catalog if isinstance(item, dict)],
+            language,
         )
         if model_clarification is not None:
             raise HTTPException(400, model_clarification)
@@ -16871,7 +16877,7 @@ async def create_canvas_workflow_draft(
         validated, state_dir=state_dir, canvas_id=canvas_id, project_id=ctx.project_id,
     )
     validated["preflight"] = await _check_workflow_runtime(
-        validated, project=project, user=user
+        validated, project=project, user=user, state_dir=state_dir
     )
     validated["preflight"].setdefault("warnings", []).extend(validated.get("story_reference_warnings") or [])
     plan = validated.get("plan") if isinstance(validated.get("plan"), dict) else {}
@@ -17126,7 +17132,7 @@ async def patch_canvas_workflow_draft(
         validated, state_dir=state_dir, canvas_id=canvas_id, project_id=ctx.project_id,
     )
     validated["preflight"] = await _check_workflow_runtime(
-        validated, project=project, user=user
+        validated, project=project, user=user, state_dir=state_dir
     )
     validated["preflight"].setdefault("warnings", []).extend(validated.get("story_reference_warnings") or [])
     if isinstance(prepared["intent"].get("plan"), dict):

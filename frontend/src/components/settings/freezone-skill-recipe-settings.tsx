@@ -9,6 +9,7 @@ import {
   type ReactNode,
   type SetStateAction,
 } from "react";
+import i18next from "i18next";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { ArrowUp, ChevronDown, ChevronRight, Copy, Download, Eye, Pencil, Plus, RefreshCw, Search, Trash2, Upload, X } from "lucide-react";
@@ -3532,6 +3533,14 @@ function CatalogList({
   );
 }
 
+// Builtin catalog names/descriptions are localized via the locale files when
+// i18next is initialized; otherwise (tests) the catalog text is used as-is.
+function localizeManagedCatalogText(id: string, field: "name" | "description", fallback: string): string {
+  if (!i18next.isInitialized || !fallback) return fallback;
+  const value = i18next.t(`freezone.agentCatalog.${id}.${field}`, { defaultValue: fallback });
+  return typeof value === "string" ? value : fallback;
+}
+
 function toManagedCatalogItem(
   item: FreezoneAgentConfigPayload,
   kind: FreezoneCatalogKind,
@@ -3546,11 +3555,14 @@ function toManagedCatalogItem(
       generationType,
       id,
       payload: item,
-      title: typeof item.name === "string" ? item.name : id,
-      description:
+      title: localizeManagedCatalogText(id, "name", typeof item.name === "string" ? item.name : id),
+      description: localizeManagedCatalogText(
+        id,
+        "description",
         getString(item.result_summary) ||
-        getString(item.planning_prompt) ||
-        getString(item.system_prompt),
+          getString(item.planning_prompt) ||
+          getString(item.system_prompt),
+      ),
       tags: [getString(item.output_kind), ...getStringArray(item.action_keys)].filter(Boolean),
     };
   }
@@ -3561,8 +3573,8 @@ function toManagedCatalogItem(
     enabled: item.enabled !== false,
     id,
     payload: item,
-    title: getString(item.name) || id,
-    description: getString(item.description),
+    title: localizeManagedCatalogText(id, "name", getString(item.name) || id),
+    description: localizeManagedCatalogText(id, "description", getString(item.description)),
     tags: [
       getString(item.category),
       ...getStringArray((triggers as Record<string, unknown>).keywords),

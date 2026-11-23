@@ -149,7 +149,10 @@ def _matches_any_display_text(fields: list[Any], queries: set[str] | None) -> bo
 
 
 def _media_ui_spec(
-    spec_type: str, component_type: str, items: list[dict[str, Any]]
+    spec_type: str,
+    component_type: str,
+    items: list[dict[str, Any]],
+    language: str | None = None,
 ) -> dict[str, Any]:
     elements: dict[str, Any] = {
         "root": {
@@ -169,7 +172,11 @@ def _media_ui_spec(
         if not src:
             continue
         key = f"media_{index}"
-        title = str(item.get("title") or item.get("label") or f"媒体 {index}").strip()
+        title = str(
+            item.get("title")
+            or item.get("label")
+            or (f"Media {index}" if language == "en" else f"媒体 {index}")
+        ).strip()
         description = str(item.get("description") or "").strip()
         props: dict[str, Any] = {"src": src, "alt": title, "title": title}
         if description:
@@ -392,11 +399,13 @@ async def _fallback_display_tool_ui_specs(
     token: str,
     _backend_api_get: Callable[[str, str], dict[str, Any]],
     project_dir: str | Path | None = None,
+    language: str | None = None,
 ) -> list[dict[str, Any]]:
     if not project or tool_name not in _DISPLAY_TOOL_NAMES:
         return []
 
     def build() -> list[dict[str, Any]]:
+        en = language == "en"
         api_project = str(
             args.get("project_id") or args.get("project") or project
         ).strip()
@@ -445,8 +454,12 @@ async def _fallback_display_tool_ui_specs(
                     media_items.append(
                         {
                             "src": video_url,
-                            "title": f"第 {episode} 集成片",
-                            "description": "最终合成视频",
+                            "title": (
+                                f"Episode {episode} final cut"
+                                if en
+                                else f"第 {episode} 集成片"
+                            ),
+                            "description": "Final composed video" if en else "最终合成视频",
                         }
                     )
             if not media_items:
@@ -457,6 +470,7 @@ async def _fallback_display_tool_ui_specs(
                     "keyframe_video",
                     "Video",
                     page_items,
+                    language,
                 )
             ]
         if tool_name in {"dramaclaw_get_sketches", "dramaclaw_get_first_frames"}:
@@ -486,8 +500,12 @@ async def _fallback_display_tool_ui_specs(
                     media_items.append(
                         {
                             "src": sketch_url,
-                            "title": f"Beat {beat_number} 草图",
-                            "description": "草图",
+                            "title": (
+                                f"Beat {beat_number} sketch"
+                                if en
+                                else f"Beat {beat_number} 草图"
+                            ),
+                            "description": "Sketch" if en else "草图",
                             "aspectRatio": "3/4",
                         }
                     )
@@ -495,14 +513,18 @@ async def _fallback_display_tool_ui_specs(
                     media_items.append(
                         {
                             "src": frame_url,
-                            "title": f"Beat {beat_number} 首帧",
-                            "description": "首帧",
+                            "title": (
+                                f"Beat {beat_number} first frame"
+                                if en
+                                else f"Beat {beat_number} 首帧"
+                            ),
+                            "description": "First frame" if en else "首帧",
                             "aspectRatio": "3/4",
                         }
                     )
             limited = _limit_display_items(media_items, args, 12)
             return (
-                [_media_ui_spec("sketch_gallery", "Image", limited)] if limited else []
+                [_media_ui_spec("sketch_gallery", "Image", limited, language)] if limited else []
             )
 
         if tool_name == "dramaclaw_get_sketch_candidates":
@@ -534,16 +556,22 @@ async def _fallback_display_tool_ui_specs(
                 media_items.append(
                     {
                         "src": src,
-                        "title": f"Beat {beat} 草图候选",
+                        "title": (
+                            f"Beat {beat} sketch candidate"
+                            if en
+                            else f"Beat {beat} 草图候选"
+                        ),
                         "description": (
-                            "过期候选" if candidate.get("stale") else "草图候选"
+                            ("Stale candidate" if candidate.get("stale") else "Sketch candidate")
+                            if en
+                            else ("过期候选" if candidate.get("stale") else "草图候选")
                         ),
                         "aspectRatio": "3/4",
                     }
                 )
             limited = _limit_display_items(media_items, args, 12)
             return (
-                [_media_ui_spec("sketch_gallery", "Image", limited)] if limited else []
+                [_media_ui_spec("sketch_gallery", "Image", limited, language)] if limited else []
             )
 
         if tool_name == "dramaclaw_get_scene_images":
@@ -593,7 +621,7 @@ async def _fallback_display_tool_ui_specs(
                         )
             limited = _limit_display_items(media_items, args, 12)
             return (
-                [_media_ui_spec("sketch_gallery", "Image", limited)] if limited else []
+                [_media_ui_spec("sketch_gallery", "Image", limited, language)] if limited else []
             )
 
         if tool_name == "dramaclaw_get_character_media":
@@ -640,7 +668,7 @@ async def _fallback_display_tool_ui_specs(
                         media_items.append(
                             {
                                 "src": portrait_url,
-                                "title": name or "角色肖像",
+                                "title": name or ("Character portrait" if en else "角色肖像"),
                                 "description": role,
                                 "aspectRatio": "3/4",
                             }
@@ -735,7 +763,7 @@ async def _fallback_display_tool_ui_specs(
                             )
             limited = _limit_display_items(media_items, args, 12)
             return (
-                [_media_ui_spec("character_showcase", "Image", limited)]
+                [_media_ui_spec("character_showcase", "Image", limited, language)]
                 if limited
                 else []
             )
@@ -792,21 +820,32 @@ async def _fallback_display_tool_ui_specs(
                         {
                             "src": video_url,
                             "poster": frame_url,
-                            "title": f"Beat {beat_number} 视频",
+                            "title": (
+                                f"Beat {beat_number} video"
+                                if en
+                                else f"Beat {beat_number} 视频"
+                            ),
                         }
                     )
                 if audio_url:
                     audio_items.append(
-                        {"src": audio_url, "title": f"Beat {beat_number} 音频"}
+                        {
+                            "src": audio_url,
+                            "title": (
+                                f"Beat {beat_number} audio"
+                                if en
+                                else f"Beat {beat_number} 音频"
+                            ),
+                        }
                     )
             if media_type == "audio":
                 limited = _limit_display_items(audio_items, args, 20)
                 return (
-                    [_media_ui_spec("audio_list", "Audio", limited)] if limited else []
+                    [_media_ui_spec("audio_list", "Audio", limited, language)] if limited else []
                 )
             limited = _limit_display_items(video_items, args, 6)
             return (
-                [_media_ui_spec("keyframe_video", "Video", limited)] if limited else []
+                [_media_ui_spec("keyframe_video", "Video", limited, language)] if limited else []
             )
 
         return []

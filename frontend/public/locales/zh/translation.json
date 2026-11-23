@@ -1066,7 +1066,20 @@
         "generateAudio": "生成声音",
         "muteAudio": "不生成声音",
         "audioOn": "有声",
-        "audioOff": "静音"
+        "audioOff": "静音",
+        "questionTitle": {
+          "image_model": "图片模型",
+          "image_aspect_ratio": "图片比例",
+          "image_resolution": "图片分辨率",
+          "image_quality": "图片画质",
+          "image_variants_per_node": "每节点图片数",
+          "video_model": "视频模型",
+          "video_aspect_ratio": "视频比例",
+          "video_resolution": "视频分辨率",
+          "video_duration_seconds": "视频时长",
+          "video_generate_audio": "视频声音",
+          "video_variants_per_node": "每节点视频数"
+        }
       },
       "clarification": {
         "submitFailed": "提交补充信息失败，请重试",
@@ -1079,10 +1092,313 @@
         "noAnswersCancelled": "本轮请求已取消，未提交选项。",
         "noAnswersSkipped": "本次问题已跳过。",
         "noAnswersSubmitted": "本次未提交具体选项。",
-        "cancelledRequest": "用户已取消本轮请求。"
+        "cancelledRequest": "用户已取消本轮请求。",
+        "nextQuestion": "下一题",
+        "previousQuestion": "上一题",
+        "submitChoices": "提交选择",
+        "continueWithChoices": "用当前选择继续",
+        "completeAllChoices": "请完成所有选择",
+        "chooseDirection": "选择一个方向，也可以补充",
+        "chooseMultiple": "可多选，也可以补充",
+        "multiple": "多选",
+        "addNotes": "其他补充...",
+        "optionFallback": "选项 {{index}}",
+        "questionFallback": "问题 {{index}}",
+        "needMoreInfo": "需要你补充一点信息",
+        "selectedCount": "已选择 {{selected}} 项 · {{answered}} / {{total}}",
+        "useRecommended": "使用推荐配置",
+        "skip": "跳过",
+        "submitting": "提交中…",
+        "noQuestions": "暂无可选择的问题",
+        "noConfigQuestions": "已提交，未包含可展示的问题配置。",
+        "skillStudioSelect": "Skill Studio 选择",
+        "answersTitle": "问题回答",
+        "notSelected": "未选择",
+        "unnamedOption": "未命名选项",
+        "notePrefix": "补充：{{text}}",
+        "skippedAction": "已跳过",
+        "recommendedAction": "已用推荐配置",
+        "submittedAnswersCount": "已提交回答 · {{answered}} / {{total}} 个",
+        "draftSaved": "已添加到虾画 Skills / Recipes",
+        "draftCancelled": "已取消，本草稿不会保存",
+        "draftRevising": "AI 调整中，请按后续问题补充修改方向",
+        "draftBeforeSave": "保存前可展开各项继续微调",
+        "draftIncomplete": "草稿未完成，本轮不会保存",
+        "skillStudioAnswered": "我已在 Skill Studio 问题卡片中完成选择。",
+        "skillStudioSession": "Skill Studio 会话：{{id}}",
+        "cardTitle": "卡片：{{title}}",
+        "choicesFollow": "选择如下：",
+        "selectionDone": "用户已完成选择，请结合当前上下文继续。",
+        "clarificationDone": "我已完成补充信息选择。",
+        "clarificationId": "Clarification：{{id}}",
+        "answersFollow": "回答如下：",
+        "followAnswers": "请根据以上补充信息执行下一步。",
+        "cancelModelSelection": "用户退出模型选择，需要先调整镜头模式或配置兼容模型。",
+        "revisionIntro": "当前处于 Skill Studio 草稿修订流程。",
+        "revisionOnlyExplicit": "只允许把本次回答中的明确选择或补充文本当作修改方向；不要从当前草稿内容、Recipe 结构或你自己的优化判断里推断用户想改什么。",
+        "revisionVague": "如果本次回答只是选择了泛泛分类，例如基本信息、输入参数、能力模块内容、约束规则、质量标准、执行流程等，仍然不算具体修改方向；下一步必须继续调用 freezone_request_user_clarification 追问一个更具体的问题。",
+        "revisionConcrete": "只有用户明确给出了具体目标和改法时，下一步才可以调用 freezone_patch_agent_catalog_draft 更新草稿，或用分片草稿工具替换较大的 Skill / Recipe 内容。",
+        "revisionShowDraft": "更新后必须调用 freezone_finish_agent_catalog_draft 展示新的可编辑草稿卡。",
+        "revisionNoPlainText": "不要只回复普通文本，不要只总结修改意图，不要询问是否保存，也不要展示未修改的旧草稿。",
+        "revisionAskAgain": "只有修改方向仍不明确时，才再调用 freezone_request_user_clarification 追问一个问题。",
+        "recommendedResponse": "请使用推荐配置继续 Skill Studio 流程。",
+        "recommendedGenerate": "请基于当前目标直接生成一个可编辑的 Skill / Recipe 草稿。",
+        "skipResponse": "我选择跳过问题卡片，直接进入 Skill Studio 草稿生成。",
+        "skipGenerate": "请根据已有上下文生成 Skill / Recipe 草稿。",
+        "draftCancelTitle": "用户已取消 Skill Studio 草稿保存。",
+        "draftCancelNoWrite": "本次草稿不会写入虾画配置。",
+        "draftCancelNotRevision": "这是用户点击取消按钮，不是修改请求，也不是重新提交请求。",
+        "draftCancelOnlyConfirm": "请只确认取消结果，不要重新提交、重新展示、保存或修改这个草稿。",
+        "draftRevisionStarted": "用户已启动 Skill Studio 草稿修改会话。",
+        "draftRevisionCurrent": "当前草稿：{{name}}",
+        "draftRevisionExplicit": "用户已经明确表示需要调整当前草稿，不要再询问是否需要调整。",
+        "draftRevisionNoSaveAsk": "不要询问是否保存当前版本，也不要提供 save_now / save_current / confirm_save 这类选项；保存只由页面草稿卡的确认按钮处理。",
+        "draftRevisionNotContinue": "这不是继续完成原草稿，也不是要求重新展示当前草稿。",
+        "draftRevisionDraftUse": "本次回执提供当前完整 draft，draft 只用于理解被修改对象和后续局部 patch；不要把 draft 内容当成用户修改意图。",
+        "draftRevisionNoDirection": "用户还没有提供具体修改方向；下一步必须调用 freezone_request_user_clarification 追问修改方向、范围或偏好。",
+        "draftRevisionOneQuestion": "这次 clarification 的 questions 数组必须只有一个问题，问题要直接问用户想改哪里或怎么改。",
+        "draftRevisionNoDraftTools": "在用户回答修改方向之前，禁止调用 freezone_begin_agent_catalog_draft / freezone_put_agent_catalog_skill / freezone_put_agent_catalog_recipe / freezone_finish_agent_catalog_draft。",
+        "draftRevisionNoPatch": "在用户回答修改方向之前，也禁止调用 freezone_patch_agent_catalog_draft。",
+        "draftRevisionNoFinishAsIs": "禁止调用 freezone_finish_agent_catalog_draft 原样展示当前草稿。",
+        "draftRevisionVagueFollowUp": "用户回答修改方向后，如果回答仍是泛泛分类，继续追问；只有回答包含具体目标和改法时，才基于当前完整草稿进行局部 patch 或分片输出更新草稿。",
+        "draftRevisionNoFullCatalog": "不要在单个 tool_call 里传完整 Skill / Recipe catalog。",
+        "draftRevisionNoPlainSummary": "不要用普通文本总结修改结果；不要只说明改了什么；未输出更新草稿前不要让用户保存。"
       },
       "canvasCommandsCancelled": "画布操作等待超时，已自动取消。",
-      "resizeWidth": "调整聊天宽度"
+      "resizeWidth": "调整聊天宽度",
+      "approval": {
+        "pendingTitle": "待确认的画布操作",
+        "planDescription": "Agent 计划执行 {{count}} 个操作，确认后才会应用到画布。",
+        "executingBadge": "执行中",
+        "confirmBadge": "确认",
+        "humanReviewUnsupportedMode": "当前文生视频模式不支持真人验证，请关闭真人验证后继续，或取消并改用带素材的视频模式。尚未提交视频生成任务。",
+        "humanReviewUnsupportedModel": "当前模型不支持真人验证，请选择后再继续。尚未提交视频生成任务。",
+        "switchModelAria": "切换到支持真人验证的模型",
+        "switchModel": "切换模型",
+        "disableHumanReview": "关闭本次视频的真人验证",
+        "cancelGeneration": "取消本次生成",
+        "humanReviewStillRejected": "关闭后仍可能被安全审核拒绝；选择后点击确认执行。",
+        "generationSettings": "生成设置",
+        "storyParamsByShot": "影游参数按镜头规划",
+        "writeAfterConfirm": "确认后统一写入节点",
+        "humanReviewTitle": "输入图片可能包含真人",
+        "humanReviewDescription": "检测到 {{count}} 个图片转视频节点，确认后将在模型支持时开启真人审核。",
+        "humanReviewAria": "真人审核",
+        "imageLabel": "图片",
+        "imageModelAria": "图片模型",
+        "imageRatioAria": "图片比例",
+        "imageResolutionAria": "图片分辨率",
+        "imageCountAria": "图片数量",
+        "imageCountUnit": "{{count}} 张",
+        "videoLabel": "视频",
+        "videoModelAria": "视频模型",
+        "videoCountAria": "视频数量",
+        "videoCountUnit": "{{count}} 个",
+        "shotParamsAria": "镜头参数：{{params}}",
+        "durationUnplanned": "时长未规划",
+        "upscaleResolutionAria": "高清分辨率",
+        "autoCancelIn": "{{seconds}}s 后自动取消",
+        "videoParamsAria": "视频参数：{{params}}",
+        "videoRatioLabel": "比例",
+        "videoQualityLabel": "画质",
+        "videoDurationLabel": "时长"
+      },
+      "directorAuto": {
+        "billingLoadFailed": "暂时无法加载虾导计费说明",
+        "episodeAutoPaused": "本集自动已暂停后续推进，等待你确认是否修改",
+        "episodeAutoCompleted": "第 {{episode}} 集自动制作已完成",
+        "episodeAutoCompletedCurrent": "当前集自动制作已完成",
+        "episodeAutoPausedShort": "本集自动已暂停",
+        "episodeAutoSelected": "已选择本集自动；发送开始指令后，还需再次确认才会执行",
+        "episodeAutoManualSwitchFailed": "已切换为手动模式，但后端自动任务暂停请求未送达",
+        "episodeAutoStartFailed": "无法启动本集自动：{{error}}",
+        "episodeAutoStartFailedFallback": "后端请求失败",
+        "episodeAutoStarted": "本集自动已启动，正在检查当前进度",
+        "turnEnded": "这轮对话已结束，不能继续提交这个问题",
+        "skillStudioBridgeMissing": "Skill Studio 桥接信息缺失，请重试",
+        "skillStudioNotReady": "Skill Studio 连接未就绪，请重试",
+        "submitSkillStudioFailed": "提交 Skill Studio 选择失败，请重试",
+        "clarificationBridgeMissing": "补充信息桥接缺失，请重试",
+        "recommendedMissingParams": "推荐配置缺少有效参数，请重新选择或刷新后重试",
+        "addSkillFailed": "添加 Skill / Recipe 失败：{{error}}",
+        "addSkillFailedFallback": "后端没有确认保存成功",
+        "addSkillFailedCheck": "添加 Skill / Recipe 失败，请检查必填字段后重试",
+        "startRevisionFailed": "启动草稿调整失败，请重试",
+        "taskCompleted": "✅ {{label}}已完成。你可以让我查看结果，或继续下一步。",
+        "taskFailed": "{{label}}失败：{{error}}\n请根据错误处理前置条件后再继续。",
+        "taskFailedFallback": "未提供具体错误原因"
+      },
+      "videoCompose": {
+        "errors": {
+          "needOneVideoTwoMedia": "自动合成至少需要 1 个视频和共计 2 个已完成媒体节点",
+          "noMaterial": "视频合成没有可用素材",
+          "overlappingClips": "视频轨道存在重叠片段，请先在时间线中调整",
+          "composeNoUrl": "视频合成完成但未返回成片地址",
+          "needTwoVideos": "视频合成至少需要 2 个已完成视频输入"
+        }
+      },
+      "directorRunMode": {
+        "modeName": "本集自动",
+        "directorName": "虾导",
+        "confirmationBody": "The user selected {{mode}} but has not completed the required second confirmation. Do not call any write, generation, or mutation tool in this turn. Reply briefly in Chinese: state that {{mode}} will safely advance the current episode until the final composition is complete, and will pause on failure, unmet prerequisites, destructive or ambiguous actions, or choices that require the user.",
+        "confirmationVoiceInstruction": " Before starting, the user must choose a voice policy. Explicitly present both Chinese choices: ‘1）缺失声线由虾导自动匹配系统声线；2）我会到「虾塘」上传或录制自定义声线。’{{errors}} Ask the user to reply 系统声线 or 自定义声线; do not start yet.",
+        "confirmationStartInstruction": " Then ask the user to reply 继续 or 确认 to start.",
+        "voiceChoiceQuestion": "Do not start episode auto and do not call generation tools. The user's voice policy is still unclear. Ask only: ‘请选择：1）缺失声线由虾导自动匹配系统声线；2）我会到「虾塘」上传或录制自定义声线。’ Ask them to reply 系统声线 or 自定义声线.",
+        "runModeBody": "The user enabled {{mode}} in the outer {{director}} UI. Treat this as approval to select and start the next safe mainline step without asking for per-step confirmation. Keep the one-write-per-turn limit. Before any write, inspect the current artifact and the latest task for that exact step. If the artifact is merely missing and prerequisites are ready, start its generation. Do not let an unrelated or superseded historical failed task block a missing safe step. Pause only when the latest attempt for the current required step failed or was cancelled. Stop for destructive overwrite/delete, missing voice choice, ambiguity, or unmet prerequisites. Never describe one task as failed and then silently proceed as though that same attempt succeeded. If this user-authored message may change, redo, replace, or reconfigure project output, do not perform that mutation yet. First call dramaclaw_control_episode_auto(action='suspend', reason=...) and ask the user to confirm the intended change. Questions, explanations, and progress checks do not require suspension. If the user explicitly asks to stop automatic production, call dramaclaw_control_episode_auto(action='pause'). Never cancel an already queued or running media task unless the user separately and explicitly confirms cancellation. This mode never applies Agent-credit billing. The durable auto coordinator is already running now: do not merely describe what {{mode}} will do in the future. Inspect current state, report the concrete active task or start the next safe task, and say clearly that automatic production has started.",
+        "userMessageBody": "The durable backend already owns progression of the active outer {{director}} episode auto run. First understand the user's actual intent; do not start the next mainline task merely because this message arrived. For a question, explanation, result view, or progress/status request, answer or read only and leave automatic progression running. If the message may change, redo, replace, or reconfigure project output, call dramaclaw_control_episode_auto(action='suspend', reason=...) before asking for confirmation, and do not perform the mutation in this turn. If the user explicitly asks to stop or switch to manual mode, call dramaclaw_control_episode_auto(action='pause'). Never cancel a queued or running generation task unless the user explicitly confirms cancellation of that exact task.",
+        "interventionBody": "The outer {{director}} episode auto run is suspended while waiting for the user's answer about a possible modification. Interpret the answer semantically. If the user declines/cancels the modification or asks to keep the original result and continue automatically, call dramaclaw_control_episode_auto(action='resume') and acknowledge that automatic production resumed. If the user confirms the modification, first call dramaclaw_control_episode_auto(action='pause') to leave automatic mode, then handle at most one confirmed project mutation under normal one-write-per-turn rules. If the answer is ambiguous, ask one concise follow-up and keep the run suspended. A queued or running generation task must continue by default and must not be cancelled unless the user explicitly confirms cancelling that exact task."
+      },
+      "nodeColumn": {
+        "text": "文本",
+        "image": "图片",
+        "video": "视频",
+        "audio": "音频",
+        "reference": "引用"
+      },
+      "canvasOperation": {
+        "expired": "画布操作已过期",
+        "cancelled": "画布操作已取消",
+        "imageGenerationFailed": "生成图片失败",
+        "videoGenerationFailed": "生成视频失败",
+        "failed": "画布操作失败",
+        "executionComplete": "画布执行完成，已执行 {{count}} 项",
+        "executionTitle": "画布执行",
+        "appliedCount": "已执行 {{count}} 项",
+        "collapse": "收起",
+        "newNode": "新节点：",
+        "nodeLabel": "节点：",
+        "actionLabel": "动作：",
+        "appliedOperations": "已应用 {{count}} 个画布操作",
+        "retry": "重新执行",
+        "cancelledLabel": "已取消",
+        "autoCancelled": "画布操作等待超时，已自动取消"
+      },
+      "skillStudio": {
+        "parameterType": {
+          "single": "单选",
+          "multiple": "多选",
+          "number": "数字",
+          "boolean": "开关",
+          "text": "文本",
+          "parameter": "参数"
+        },
+        "editItem": "编辑 {{item}}",
+        "deleteItem": "删除 {{item}}",
+        "jsonInvalid": "JSON 格式不正确，请检查后再提交",
+        "jsonInvalidAdjust": "JSON 格式不正确，请检查后再调整",
+        "jsonMustBeObject": "草稿必须是 JSON 对象",
+        "draftIncompleteTitle": "Skill 草稿未完成",
+        "draftTitle": "Skill / Recipe 草稿",
+        "editMode": "编辑",
+        "newMode": "新建",
+        "incompleteNotice": "Agent 已提交了一部分内容，但本轮对话已结束，草稿还不能保存。",
+        "completedSection": "已完成",
+        "missingSection": "缺少",
+        "continueHint": "继续对话后，Agent 可以基于当前草稿补全缺失部分。",
+        "noDescription": "暂无描述",
+        "basicInfo": "基础信息",
+        "keywordPlaceholder": "输入关键词后按 Enter",
+        "optionCount": "{{count}} 个选项",
+        "optionFallback": "选项 {{n}}",
+        "defaultPrefix": "默认 {{value}}",
+        "required": "必填",
+        "planningStrategy": "规划策略",
+        "rulePlaceholder": "输入规则后按 Enter",
+        "evaluationCriteria": "评估标准",
+        "criteriaSeparatorPlaceholder": "用顿号、逗号或换行分隔",
+        "criteriaExample1": "如：8：风格统一且文化元素准确",
+        "criteriaExample2": "如：风格一致性（0.35）：是否符合视觉风格",
+        "criteriaExample3": "如：文案传播力（0.4）：标题是否有记忆点",
+        "reuseRecipes": "复用 Recipes ({{count}})",
+        "readOnly": "只读",
+        "recipeNotFound": "未找到",
+        "recipeTypeFallback": "类型",
+        "recipeMissingHint": "当前本地 Recipe 列表里没有找到这个 ID，保存前需要确认配置是否存在。",
+        "unmatchedName": "未匹配到名称",
+        "unmatchedType": "未匹配到类型",
+        "unmatchedAction": "未匹配到动作类型",
+        "unmatchedSystemPrompt": "未匹配到系统提示词",
+        "unmatchedMustHave": "未匹配到必含项",
+        "unmatchedPlanningPrompt": "未匹配到规划提示",
+        "unmatchedResultSummary": "未匹配到结果摘要",
+        "outputTypeImage": "图片",
+        "outputTypeVideo": "视频",
+        "outputTypeAudio": "音频",
+        "outputTypeText": "文本",
+        "outputTypeHtml": "HTML 网页",
+        "typePlaceholder": "输入类型后按 Enter",
+        "elementPlaceholder": "输入元素后按 Enter",
+        "viewRawJson": "查看原始 JSON",
+        "draftIncompleteFooter": "草稿未完成，本轮不会保存",
+        "adjustWithAi": "让 AI 调整",
+        "confirmAdd": "确认添加",
+        "enteringSkillStudio": "正在进入 Skill Studio...",
+        "draftSavedMessage": "我已在 Skill Studio 草稿卡片中确认添加，已保存为正式 Skill / Recipe。",
+        "draftSavedSession": "Skill Studio 会话：{{id}}",
+        "draftSavedSkill": "Skill：{{id}}",
+        "draftSavedRecipes": "Recipes：{{ids}}",
+        "draftSavedHint": "该 Skill / Recipe 已写入虾画配置，可立即使用。请不要再要求用户保存为正式能力。",
+        "selectTitle": "Skill Studio 选择"
+      },
+      "canvasPlan": {
+        "nodeType": {
+          "node": "节点",
+          "imageNode": "图片节点",
+          "videoNode": "视频节点",
+          "textNode": "文本节点",
+          "audioNode": "音频节点",
+          "scriptNode": "脚本节点"
+        },
+        "commandLabel": {
+          "createNode": "创建{{nodeType}}",
+          "addNextNode": "添加下游{{nodeType}}",
+          "updateNodeData": "更新节点参数",
+          "deleteNodes": "删除节点",
+          "deleteEdges": "断开连接",
+          "createEdge": "创建连接",
+          "layoutNodes": "整理布局",
+          "groupNodes": "创建普通组",
+          "moveNodes": "移动节点",
+          "selectNodes": "选中节点",
+          "generateImage": "生成图片",
+          "generateVideo": "生成视频",
+          "openVideoComposeModal": "打开视频合成与剪辑",
+          "autoComposeVideo": "自动合成视频",
+          "openVideoViewer": "打开视频",
+          "runNodeAction": "执行节点动作",
+          "openMainlineProjection": "打开主线虾画",
+          "canvasOperation": "画布操作"
+        },
+        "detailPrefix": {
+          "position": "位置：",
+          "upstream": "上游：",
+          "action": "动作：",
+          "scope": "范围：",
+          "episode": "集数：",
+          "target": "目标：",
+          "assetType": "素材类型：",
+          "mode": "模式：",
+          "count": "数量：",
+          "name": "名称：",
+          "mainlineAssets": "主线素材",
+          "currentCanvas": "当前画布",
+          "autoConnect": "自动连线",
+          "allNodes": "当前画布全部节点"
+        }
+      },
+      "billing": {
+        "title": "虾导 Agent 积分参考",
+        "noteFallback": "普通聊天和画布操作免费；仅高级 Agent 能力交付计费。",
+        "headerTask": "任务",
+        "headerIncludes": "包含内容",
+        "headerBilling": "Agent 计费",
+        "loading": "正在加载计费参考…",
+        "footnote": "表中区间用于提前了解消耗量级，最终以系统配置的功能价格和实际成功交付数量为准。图片、音频和视频等模型生成费用不包含在本表中，仍由 NewAPI 按原有规则独立结算。工具重试和内部多步调用不会重复收取 Agent 交付费用。",
+        "dialogAria": "虾导计费说明"
+      },
+      "waitingForReply": "正在等待您的回复",
+      "backToBottom": "回到底部",
+      "episodeAutoRunning": "本集自动正在运行，将按任务状态继续推进"
     },
     "workflowRecovery": {
       "safetyReviewFailed": "有节点未通过安全审核",
@@ -1652,6 +1968,236 @@
         "storyboard": "暂无统一的自动完成判据",
         "video": "所有片段视频素材就绪后才算完成；生成中不计入",
         "complete": "完成需要实际试玩与交付项验收，不自动判定"
+      }
+    },
+    "agentCatalog": {
+      "ecommerce-ad": {
+        "name": "电商广告",
+        "description": "根据商品与卖点动态规划广告镜头，生成商品锚点、广告画面、视频片段、配音并自动合成。"
+      },
+      "japanese-anime-drama-video": {
+        "name": "日系漫剧梦工坊",
+        "description": "适用于日系写实动漫风格的漫剧短片创作，涵盖青春情感、城市光影、错过与重逢等题材，支持中文（普通话/台湾华语）及日语等多语言风格的高密度对话短剧。"
+      },
+      "lego-minifigure-animation-video": {
+        "name": "乐高小人动画短片",
+        "description": "把主题、角色、场景、冲突或参考素材发展成 LEGO Minifigure 风格动画短片，按剧本大纲、分镜规划、关键元素锚定和单段视频分阶段推进，保持乐高小人比例、积木场景逻辑和跨镜头一致性。"
+      },
+      "ling-cage-cinematic-video": {
+        "name": "灵笼风格科幻短片",
+        "description": "把灵感、角色设定、参考素材或脚本发展成灵笼风格半写实 3D 末世科幻动画短片，按故事脚本、分镜、关键元素、逐镜视频和音频层分阶段推进。"
+      },
+      "outdoor-stage-duel-video": {
+        "name": "户外舞台双人能力秀",
+        "description": "把角色描述、能力类型、舞台场景或高潮结构发展成观众第一视角的户外舞台双人能力对决短片，按创意规格、分镜、关键元素、单镜视频和音频层分阶段推进。"
+      },
+      "pixar-ip-ad-video": {
+        "name": "皮克斯 IP 品牌广告短片",
+        "description": "把 IP 角色描述、品牌/道具设定、广告剧情或参考素材发展成皮克斯 3D 卡通风格品牌广告短片，通过角色属性锁定、道具锚定、分镜规划、视频片段生成和音频合成分阶段推进，保证角色、道具、分镜和视频引用链一致。"
+      },
+      "retro-hong-kong-kungfu-comedy-video": {
+        "name": "港风功夫萌宠短片",
+        "description": "把人物、宠物、动物参考或一句灵感发展成 80 年代复古香港功夫喜剧短片；先搭建包含剧本、分镜、关键元素、逐镜视频和音频层的完整工作流，再交由画布工作流分阶段执行。"
+      },
+      "short-drama-quick": {
+        "name": "短剧（快速测试）",
+        "description": "用于快速验证动态短剧工作流：故事规划、角色锚点、分镜、视频、配音和自动合成。"
+      },
+      "social-content-campaign": {
+        "name": "社交内容套图",
+        "description": "根据品牌、产品或活动目标，动态规划社交平台文案、通用视觉和各平台适配图片。"
+      },
+      "text-to-image-video": {
+        "name": "文生图生视频（动态）",
+        "description": "从文字创意动态展开多个镜头，先生成关键图，再逐镜头生成视频并自动合成。"
+      },
+      "text-to-image": {
+        "name": "文生图（动态）",
+        "description": "从文字需求规划并生成一张或多张普通图片，不附加视频、音频或社交平台模板阶段。"
+      },
+      "video-tutorial": {
+        "name": "视频解说教程",
+        "description": "把知识点、操作步骤或产品使用方法转换为分段解说教程视频。"
+      },
+      "ad-ip-character-anchor": {
+        "name": "广告 IP 角色锚点立绘"
+      },
+      "ad-product-prop-anchor": {
+        "name": "广告产品道具锚点图"
+      },
+      "anthropomorphic-kungfu-key-elements": {
+        "name": "拟人功夫关键元素图"
+      },
+      "anthropomorphic-kungfu-shot-video": {
+        "name": "拟人功夫单段视频"
+      },
+      "dialogue-continuity-shot-video": {
+        "name": "连续性对白单镜视频"
+      },
+      "dialogue-drama-story-script": {
+        "name": "对白短剧故事脚本"
+      },
+      "dialogue-drama-storyboard-plan": {
+        "name": "对白连续性分镜规划"
+      },
+      "digital-product-ad-image": {
+        "name": "数码智能产品详情图出图"
+      },
+      "digital-product-text-plan": {
+        "name": "数码智能产品详情页策划文案"
+      },
+      "drama-background-music": {
+        "name": "短剧背景音乐"
+      },
+      "drama-character-extraction": {
+        "name": "角色形象提取"
+      },
+      "drama-character-turnaround": {
+        "name": "角色人物模卡（多角度）"
+      },
+      "drama-plot-outline": {
+        "name": "短剧情节大纲"
+      },
+      "drama-prop-extraction": {
+        "name": "道具设定提取"
+      },
+      "drama-prop-image": {
+        "name": "道具多角度图"
+      },
+      "drama-scene-extraction": {
+        "name": "场景设定提取"
+      },
+      "drama-scene-image": {
+        "name": "场景多角度图"
+      },
+      "drama-shot-group-detail": {
+        "name": "镜头组细化"
+      },
+      "drama-shot-group-storyboard": {
+        "name": "镜头组故事板图"
+      },
+      "drama-shot-planning": {
+        "name": "导演镜头规划"
+      },
+      "drama-shot-voice": {
+        "name": "逐镜头短剧配音"
+      },
+      "ecommerce-ad-image": {
+        "name": "电商详情页出图"
+      },
+      "ecommerce-remix-image": {
+        "name": "电商详情页洗图"
+      },
+      "ecommerce-scene-image": {
+        "name": "产品场景图"
+      },
+      "ecommerce-style-reference": {
+        "name": "电商详情页全案视觉参考图"
+      },
+      "ecommerce-text-plan": {
+        "name": "电商详情页文案方案"
+      },
+      "four-act-comedy-story-outline": {
+        "name": "四幕喜剧故事大纲"
+      },
+      "general-audio": {
+        "name": "通用音频生成"
+      },
+      "general-image": {
+        "name": "通用图片增强"
+      },
+      "general-text": {
+        "name": "通用文本增强"
+      },
+      "general-video": {
+        "name": "通用视频增强"
+      },
+      "keyframe-scene-script": {
+        "name": "关键帧脚本"
+      },
+      "outdoor-stage-duel-audio-layers": {
+        "name": "舞台对决音频层"
+      },
+      "outdoor-stage-duel-key-elements": {
+        "name": "舞台对决关键元素"
+      },
+      "outdoor-stage-duel-shot-video": {
+        "name": "舞台对决单镜视频"
+      },
+      "outdoor-stage-duel-storyboard": {
+        "name": "舞台对决分镜"
+      },
+      "sci-fi-survival-audio-layers": {
+        "name": "末世科幻 BGM"
+      },
+      "sci-fi-survival-key-elements": {
+        "name": "末世科幻关键元素"
+      },
+      "sci-fi-survival-shot-video": {
+        "name": "末世科幻单镜视频"
+      },
+      "sci-fi-survival-story-script": {
+        "name": "末世科幻故事脚本"
+      },
+      "sci-fi-survival-storyboard": {
+        "name": "末世科幻分镜设计"
+      },
+      "short-film-script-outline": {
+        "name": "短片剧本大纲"
+      },
+      "social-content-image": {
+        "name": "社媒通用配图"
+      },
+      "social-copywriting": {
+        "name": "社媒爆款文案拆解"
+      },
+      "social-douyin-cover": {
+        "name": "抖音/TikTok 封面"
+      },
+      "social-ig-post": {
+        "name": "Instagram 贴文配图"
+      },
+      "social-weibo-wechat-image": {
+        "name": "微博/微信公号配图"
+      },
+      "social-xiaohongshu-image": {
+        "name": "小红书封面/配图"
+      },
+      "storyboard-plan": {
+        "name": "分镜规划"
+      },
+      "storyboard-shot-video": {
+        "name": "分镜单段视频"
+      },
+      "video-ad-brief": {
+        "name": "视频广告脚本"
+      },
+      "video-ad-creative-outline": {
+        "name": "广告创意大纲"
+      },
+      "video-audio-layer": {
+        "name": "视频音频层"
+      },
+      "video-clip-generation": {
+        "name": "分镜/关键帧视频生成"
+      },
+      "video-creative-outline": {
+        "name": "视频创意大纲"
+      },
+      "video-frame-extraction": {
+        "name": "分镜图片提取"
+      },
+      "video-storyboard-grid": {
+        "name": "多宫格分镜图"
+      },
+      "video-storyboard-script": {
+        "name": "视频分镜脚本"
+      },
+      "visual-key-elements": {
+        "name": "视觉关键元素图"
+      },
+      "workflow-input-analysis": {
+        "name": "工作流输入分析"
       }
     }
   },
@@ -6323,6 +6869,76 @@
       "flagOff": "关闭",
       "makeStory": "组成互动影游",
       "noVariablesHint": "先在组头「故事变量」添加变量,才能设条件 / 效果"
+    },
+    "command": {
+      "createNode": "创建节点",
+      "addNextNode": "添加下游节点",
+      "updateNodeData": "更新节点",
+      "deleteNodes": "删除节点",
+      "clearCanvas": "清空画布",
+      "deleteEdges": "断开连接",
+      "createEdge": "创建连接",
+      "layoutNodes": "整理布局",
+      "groupNodes": "创建普通组",
+      "moveNodes": "移动节点",
+      "selectNodes": "选中节点",
+      "openMainlineProjection": "打开主线虾画",
+      "runWorkflow": "运行工作流",
+      "canvasOperation": "画布操作",
+      "workflowAlreadyExists": "工作流已存在，跳过重复创建",
+      "reuseWorkflowNode": "复用已有工作流节点",
+      "skipInvalidConnection": "跳过无效连接",
+      "validate": "校验画布命令",
+      "invalidCommand": "画布命令无效",
+      "runNodeAction": {
+        "translateText": "翻译文本",
+        "reversePrompt": "图片反推提示词",
+        "generateTextVideo": "文生视频",
+        "generateStoryScript": "生成故事脚本",
+        "openUploadPicker": "打开上传选择",
+        "generateImage": "生成图片",
+        "generateAudio": "生成音频",
+        "openVoicePicker": "打开音色选择",
+        "generateVideo": "生成视频",
+        "runSkill": "运行技能",
+        "openVideoComposeModal": "打开视频合成与剪辑",
+        "autoComposeVideo": "自动合成视频",
+        "openDirectorWorld": "打开导演世界",
+        "generate3gsWorld": "生成 3GS 世界",
+        "openSplitStoryboardTool": "打开分格抽取",
+        "runMattingTool": "抠图",
+        "runUpscaleTool": "高清放大",
+        "runOutpaintTool": "扩图",
+        "runScene360Tool": "生成 360 全景",
+        "runGridMultiCamera": "生成多机位九宫格",
+        "runGridPlotFour": "生成剧情四宫格",
+        "runGridFaceThreeView": "生成面部三视图",
+        "runGridProductThreeView": "生成产品三视图",
+        "runGridSerialStoryboard25": "生成连续分镜 25 格",
+        "runGridCinematicLightCorrection": "生成电影感光影修正",
+        "runGridCharacterThreeView": "生成角色三视图",
+        "runGridSceneSettingSheet": "生成场景设定图",
+        "runGridFrameProjection3sLater": "推演 3 秒后画面",
+        "runGridFrameProjection5sEarlier": "推演 5 秒前画面",
+        "openVideoViewer": "打开视频",
+        "downloadVideo": "下载视频",
+        "openVideoClipTool": "打开视频剪辑",
+        "openVideoUpscaleTool": "打开视频高清",
+        "runVideoAnalyzeStory": "解析视频",
+        "runAudioSeparate": "分离音视频",
+        "downloadAudio": "下载音频",
+        "openVideoSubtitleEraseSmart": "智能去字幕",
+        "openVideoSubtitleEraseBox": "框选去字幕",
+        "capturePanoCurrentView": "截取当前 360 视角",
+        "capturePano2x2Views": "截取 360 四视角",
+        "capturePano4x3Views": "截取 360 十二视角",
+        "downloadImage": "下载图片",
+        "setPanoCurrentViewAsBackground": "设为当前背景",
+        "resetPanoView": "复位 360 视角",
+        "syncBeatContextToMainline": "同步镜头上下文",
+        "openNodeAction": "打开节点动作"
+      },
+      "invalidCommandError": "无法解析 canvas_chat_commands.v1 命令；请检查 command 字段是否在正确层级。"
     }
   },
   "tool": {

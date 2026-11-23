@@ -5724,6 +5724,7 @@ describe("useSuperChat websocket lifecycle", () => {
       context: {
         freezone_canvas_id: "canvas-a",
         canvas_command_execution_mode: "auto_execute",
+        ui_language: "zh",
       },
     }));
   });
@@ -5797,6 +5798,7 @@ describe("useSuperChat websocket lifecycle", () => {
         freezone_canvas_id: "canvas-a",
         canvas_command_execution_mode: "manual_confirm",
         freezone_compose_node_id: "compose-1",
+        ui_language: "zh",
       },
     }));
 
@@ -5811,6 +5813,7 @@ describe("useSuperChat websocket lifecycle", () => {
       context: {
         freezone_canvas_id: "canvas-a",
         canvas_command_execution_mode: "manual_confirm",
+        ui_language: "zh",
       },
     }));
   });

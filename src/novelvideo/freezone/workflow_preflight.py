@@ -478,14 +478,19 @@ def video_model_reselection_clarification(
     preflight: dict[str, Any],
     compiled: dict[str, Any],
     catalog: list[dict[str, Any]],
+    language: object | None = None,
 ) -> dict[str, Any] | None:
     """Return the verified model choice, or the fixed constraint-adjustment choice."""
+    from novelvideo.prompts.lang import resolve_director_language
+
+    lang = resolve_director_language(language)
+    en = lang == "en"
     candidates = _video_model_reselection_candidates(preflight)
     if candidates is None:
         return None
     relevant, compatible = candidates
     if not compatible:
-        return video_model_constraint_adjustment_clarification(preflight)
+        return video_model_constraint_adjustment_clarification(preflight, language=lang)
 
     options = []
     for model_id in compatible:
@@ -496,7 +501,12 @@ def video_model_reselection_clarification(
             {
                 "id": model_id,
                 "label": str(entry.get("label") or entry.get("name") or model_id),
-                "description": "支持当前镜头的参考模式、时长及已确认生成参数。",
+                "description": (
+                    "Supports the current shots' reference modes, durations, and "
+                    "confirmed generation parameters."
+                    if en
+                    else "支持当前镜头的参考模式、时长及已确认生成参数。"
+                ),
             }
         )
     if not options:
@@ -527,9 +537,17 @@ def video_model_reselection_clarification(
             continue
         minimum, maximum = blocker.get("minimum"), blocker.get("maximum")
         if isinstance(minimum, (int, float)) and duration < minimum:
-            duration_conflicts.append(f"第 {index} 镜为 {duration:g} 秒，所选模型最少需要 {minimum:g} 秒。")
+            duration_conflicts.append(
+                f"Shot {index} is {duration:g}s; the selected model needs at least {minimum:g}s."
+                if en
+                else f"第 {index} 镜为 {duration:g} 秒，所选模型最少需要 {minimum:g} 秒。"
+            )
         elif isinstance(maximum, (int, float)) and duration > maximum:
-            duration_conflicts.append(f"第 {index} 镜为 {duration:g} 秒，所选模型最多支持 {maximum:g} 秒。")
+            duration_conflicts.append(
+                f"Shot {index} is {duration:g}s; the selected model supports at most {maximum:g}s."
+                if en
+                else f"第 {index} 镜为 {duration:g} 秒，所选模型最多支持 {maximum:g} 秒。"
+            )
     if not affected_node_ids:
         return None
 
@@ -545,10 +563,23 @@ def video_model_reselection_clarification(
         "affected_node_ids": affected_node_ids,
         "question": {
             "id": "compatible_video_model",
-            "title": "确认兼容的视频模型",
+            "title": "Confirm a compatible video model" if en else "确认兼容的视频模型",
             "prompt": (
-                ("".join(duration_conflicts) or "当前选择的视频模型与已确认的镜头参数不兼容。")
-                + "切换模型可能影响成本或效果，请确认替代模型。"
+                (
+                    "".join(duration_conflicts)
+                    or (
+                        "The currently selected video model is incompatible with the "
+                        "confirmed shot parameters."
+                        if en
+                        else "当前选择的视频模型与已确认的镜头参数不兼容。"
+                    )
+                )
+                + (
+                    " Switching models may affect cost or results; please confirm a "
+                    "replacement model."
+                    if en
+                    else "切换模型可能影响成本或效果，请确认替代模型。"
+                )
             ),
             "mode": "single",
             "options": options,
@@ -570,6 +601,7 @@ def video_model_reselection_clarification(
 
 def no_compatible_video_model_clarification(
     preflight: dict[str, Any],
+    language: object | None = None,
 ) -> dict[str, Any] | None:
     """Return the fixed question only when model blockers have no common candidate."""
     candidates = _video_model_reselection_candidates(preflight)
@@ -578,10 +610,20 @@ def no_compatible_video_model_clarification(
     _relevant, compatible = candidates
     if compatible:
         return None
-    return video_model_constraint_adjustment_clarification(preflight)
+    return video_model_constraint_adjustment_clarification(preflight, language=language)
 
 
-def generation_clarification_request(preflight: dict[str, Any]) -> dict[str, Any] | None:
+def _clarification_language_is_english(language: object | None) -> bool:
+    """True when the clarification question should be rendered in English."""
+    from novelvideo.prompts.lang import resolve_director_language
+
+    return resolve_director_language(language) == "en"
+
+
+def generation_clarification_request(
+    preflight: dict[str, Any],
+    language: object | None = None,
+) -> dict[str, Any] | None:
     """Merge generation_parameters_required blockers into one clarification request.
 
     Returns ``None`` when the preflight has no such blocker, and also when any
@@ -650,7 +692,14 @@ def generation_clarification_request(preflight: dict[str, Any]) -> dict[str, Any
         "media_types": sorted(required_choices),
         "missing_parameters": missing,
         "required_choices": required_choices,
-        "clarification": {"title": "确认图片和视频生成参数", "allow_skip": False},
+        "clarification": {
+            "title": (
+                "Confirm image and video generation parameters"
+                if _clarification_language_is_english(language)
+                else "确认图片和视频生成参数"
+            ),
+            "allow_skip": False,
+        },
     }
 
 

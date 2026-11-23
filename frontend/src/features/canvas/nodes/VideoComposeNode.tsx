@@ -131,14 +131,14 @@ export const VideoComposeNode = memo(
 
     const handleAutoCompose = useCallback(async () => {
       if (!project || !canAutoCompose) {
-        throw new Error("自动合成至少需要 1 个视频和共计 2 个已完成媒体节点");
+        throw new Error(t("freezone.chat.videoCompose.errors.needOneVideoTwoMedia"));
       }
       let taskCompleted = false;
       const draft = data.draftTimeline as ComposeTimelineState | undefined;
       const timeline = await resolveComposeTimeline(draft, seedNodeIds);
-      if (!hasExportableClips(timeline)) throw new Error("视频合成没有可用素材");
+      if (!hasExportableClips(timeline)) throw new Error(t("freezone.chat.videoCompose.errors.noMaterial"));
       if (hasOverlappingVideoClips(timeline)) {
-        throw new Error("视频轨道存在重叠片段，请先在时间线中调整");
+        throw new Error(t("freezone.chat.videoCompose.errors.overlappingClips"));
       }
       updateNodeData(id, {
         isGenerating: true,
@@ -165,7 +165,7 @@ export const VideoComposeNode = memo(
           "freezone_video_compose",
           ref.job_id,
         );
-        if (!result.url) throw new Error("视频合成完成但未返回成片地址");
+        if (!result.url) throw new Error(t("freezone.chat.videoCompose.errors.composeNoUrl"));
         const projectionReconcile =
           await reconcileCompletedVideoComposeProjection({
             projectId: project,
@@ -252,7 +252,7 @@ export const VideoComposeNode = memo(
         if (action === "open_video_compose_modal") {
           publishNodeActionAccepted(requestId, id, action);
           if (!handleOpen()) {
-            publishNodeActionError(requestId, id, action, "视频合成至少需要 2 个已完成视频输入");
+            publishNodeActionError(requestId, id, action, t("freezone.chat.videoCompose.errors.needTwoVideos"));
             return;
           }
           publishNodeActionSuccess(requestId, id, action, { openedUiAction: true });

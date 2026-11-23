@@ -1588,8 +1588,8 @@ export function FreezoneShell({
               commandIndex: -1,
               type: "validate",
               status: "error",
-              label: "画布命令无效",
-              error: "无法解析 canvas_chat_commands.v1 命令；请检查 command 字段是否在正确层级。",
+              label: t("canvas.command.invalidCommand", { defaultValue: "画布命令无效" }),
+              error: t("canvas.command.invalidCommandError", { defaultValue: "无法解析 canvas_chat_commands.v1 命令；请检查 command 字段是否在正确层级。" }),
             },
           ],
         };
@@ -1655,7 +1655,7 @@ export function FreezoneShell({
           surfaceOrder: eventReceivedAt + 1,
           externalMcpCommand: isExternalMcpCommand,
         });
-        const result = canvasCommandValidationFailureResult(errors);
+        const result = canvasCommandValidationFailureResult(errors, (key: string) => t(key));
         reportCanvasCommandToolResult({
           bridgeKey,
           turnId,

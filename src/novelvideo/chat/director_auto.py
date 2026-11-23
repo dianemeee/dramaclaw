@@ -407,14 +407,55 @@ def _relevant_tasks(run: DirectorAutoRun, tasks: Iterable[TaskState]) -> list[Ta
     ]
 
 
-def _task_label(task: TaskState) -> str:
+#: English stage labels for the director-auto task notifications (zh is the
+#: inline fallback below, unchanged from upstream).
+_TASK_LABELS_EN = {
+    "ingest_fast": "Project ingest",
+    "build_characters": "Character building",
+    "build_props": "Prop building",
+    "build_episodes": "Episode planning",
+    "identity_planner": "Identity planning",
+    "character_portrait": "Character portrait",
+    "identity_image": "Identity image generation",
+    "script_writer": "Script writing",
+    "content_rewriter": "Narration rewrite",
+    "literal_script_writer": "Narration script writing",
+    "director_notes": "Director notes",
+    "build_scenes": "Scene planning",
+    "episode_scene_planner": "Episode scene planning",
+    "episode_prop_planner": "Episode prop planning",
+    "scene_reference_asset": "Scene reference image",
+    "prop_reference_asset": "Prop reference image",
+    "sketch_grid_generation": "Sketch grid",
+    "sketch_generation": "Sketch generation",
+    "sketch_regen": "Sketch regeneration",
+    "grid_regenerate": "Sketch grid regeneration",
+    "mainline_sketch_from_context": "Sketch generation",
+    "mainline_frame_from_context": "First-frame generation",
+    "ai_identity_detection": "Identity check",
+    "global_optimize_video": "Global optimization",
+    "selected_regen": "First-frame generation",
+    "render_plan": "Render planning",
+    "system_voice_setup": "System voice setup",
+    "audio_generation_indextts2": "Audio generation",
+    "indextts2_audio_generation": "Audio generation",
+    "audio_generation": "Audio generation",
+    "single_video": "Video generation",
+    "compose_episode": "Final composition",
+}
+
+
+def _task_label(task: TaskState, language: str | None = None) -> str:
     result = task.result if isinstance(task.result, dict) else {}
     scope_parts = [part.strip() for part in str(task.scope or "").split(":") if part.strip()]
+    en = language == "en"
     if task.task_type == "character_portrait":
         character = str(result.get("character_name") or "").strip()
         if not character and len(scope_parts) > 1:
             character = scope_parts[1]
-        return f"{character}肖像" if character else "角色肖像"
+        if character:
+            return f"{character} portrait" if en else f"{character}肖像"
+        return "Character portrait" if en else "角色肖像"
     if task.task_type == "identity_image":
         character = str(result.get("character_name") or "").strip()
         identity = str(result.get("identity_name") or "").strip()
@@ -423,10 +464,15 @@ def _task_label(task: TaskState) -> str:
         if not identity and len(scope_parts) > 3:
             identity = scope_parts[3]
         if character and identity:
-            return f"{character}「{identity}」身份图"
-        return f"{character or identity or '角色'}身份图"
+            return f"{character} — {identity} identity image" if en else f"{character}「{identity}」身份图"
+        base = character or identity or ("Character" if en else "角色")
+        return f"{base} identity image" if en else f"{base}身份图"
     if task.task_type == "single_video" and task.beat_num:
-        return f"第 {task.episode} 集 Beat {task.beat_num} 视频"
+        return (
+            f"Episode {task.episode} Beat {task.beat_num} video"
+            if en
+            else f"第 {task.episode} 集 Beat {task.beat_num} 视频"
+        )
     labels = {
         "ingest_fast": "项目摄入",
         "build_characters": "角色构建",
@@ -461,6 +507,8 @@ def _task_label(task: TaskState) -> str:
         "single_video": "视频生成",
         "compose_episode": "成片合成",
     }
+    if en:
+        return _TASK_LABELS_EN.get(task.task_type, task.task_type)
     return labels.get(task.task_type, task.task_type)
 
 
@@ -749,6 +797,21 @@ class DirectorAutoCoordinator:
             },
         )
 
+    async def _run_language(self, run: DirectorAutoRun) -> str:
+        """Resolve the run's UI language from the recorded canvas locale.
+
+        No recorded locale (or an unreadable one) falls back to ``zh``,
+        which keeps the existing notifications — and the tests — unchanged.
+        """
+        from novelvideo.freezone.canvas_ui_locale import recorded_ui_locale
+        from novelvideo.prompts.lang import normalize_ui_language
+
+        try:
+            locale = await asyncio.to_thread(recorded_ui_locale, run.context.state_dir)
+        except Exception:
+            return "zh"
+        return normalize_ui_language(locale)
+
     async def _notify(self, run: DirectorAutoRun, text: str) -> dict[str, Any]:
         ctx = run.context
         message = await asyncio.to_thread(
@@ -778,6 +841,7 @@ class DirectorAutoCoordinator:
         final_delivery: bool = False,
         instruction: str | None = None,
     ) -> bool:
+        lang = await self._run_language(run)
         stored_ctx = run.context
         try:
             ctx = await resolve_project_context(
@@ -795,7 +859,12 @@ class DirectorAutoCoordinator:
                 project_id=run.project_id,
                 reason=f"项目权限校验失败：{exc}",
             )
-            await self._notify(run, "本集自动已暂停：当前用户已无权继续修改该项目。")
+            await self._notify(
+                run,
+                "Episode Auto paused: the current user no longer has permission to modify this project."
+                if lang == "en"
+                else "本集自动已暂停：当前用户已无权继续修改该项目。",
+            )
             return False
         # A user-driven turn and a durable continuation share the same project
         # lock. Wait instead of treating ordinary chat activity as auto failure.
@@ -813,7 +882,12 @@ class DirectorAutoCoordinator:
                 project_id=run.project_id,
                 reason="等待虾导空闲超时",
             )
-            await self._notify(run, "本集自动已暂停：虾导长时间处于忙碌状态。")
+            await self._notify(
+                run,
+                "Episode Auto paused: Xia Director has been busy for a long time."
+                if lang == "en"
+                else "本集自动已暂停：虾导长时间处于忙碌状态。",
+            )
             return False
         prompt = instruction or (
             "第 {episode} 集成片合成已完成。请只读取并展示正式成片，然后简短收口；不要启动新的写任务。"
@@ -924,7 +998,12 @@ class DirectorAutoCoordinator:
                         "message": None,
                     },
                 )
-        await self._notify(run, "本集自动已暂停：虾导继续执行失败，请检查服务状态后重试。")
+        await self._notify(
+            run,
+            "Episode Auto paused: Xia Director failed to continue; please check the service status and retry."
+            if lang == "en"
+            else "本集自动已暂停：虾导继续执行失败，请检查服务状态后重试。",
+        )
         return False
 
     async def _run(self, run_id: str, username: str, project_id: str) -> None:
@@ -935,6 +1014,7 @@ class DirectorAutoCoordinator:
             run = await asyncio.to_thread(self.store.get, username, project_id)
             if run is None or run.run_id != run_id or run.status != "running":
                 return
+            lang = await self._run_language(run)
             tasks = await asyncio.to_thread(get_task_manager().list_tasks_for_project, run.context)
             relevant = _relevant_tasks(run, tasks)
             baseline = set(run.baseline_task_ids)
@@ -991,7 +1071,12 @@ class DirectorAutoCoordinator:
                             return
                         await self._notify(
                             recovering,
-                            f"检测到{_task_label(failed)}缺少前置肖像，正在自动补生成「{character}」肖像。",
+                            (
+                                f"Detected that {_task_label(failed, lang)} is missing a prerequisite "
+                                f"portrait; auto-generating the portrait for “{character}”."
+                                if lang == "en"
+                                else f"检测到{_task_label(failed, lang)}缺少前置肖像，正在自动补生成「{character}」肖像。"
+                            ),
                         )
                         if not await self._owns_run(run_id):
                             return
@@ -1014,12 +1099,21 @@ class DirectorAutoCoordinator:
                             run_id=run_id,
                             username=username,
                             project_id=project_id,
-                            reason=f"无法自动补生成「{character}」肖像",
+                            reason=(
+                                f"Could not auto-generate the portrait for “{character}”"
+                                if lang == "en"
+                                else f"无法自动补生成「{character}」肖像"
+                            ),
                             terminal_task_id=failed.task_id,
                         )
                         await self._notify(
                             recovering,
-                            f"本集自动已暂停：未能启动「{character}」肖像生成，请检查角色肖像配置。",
+                            (
+                                f"Episode Auto paused: could not start the portrait generation for "
+                                f"“{character}”; please check the character portrait settings."
+                                if lang == "en"
+                                else f"本集自动已暂停：未能启动「{character}」肖像生成，请检查角色肖像配置。"
+                            ),
                         )
                         return
                     await self._pause_owned(
@@ -1031,16 +1125,34 @@ class DirectorAutoCoordinator:
                     )
                     await self._notify(
                         updated,
-                        f"本集自动已暂停：{_task_label(failed)}{('已取消' if failed.status == 'cancelled' else '失败')}，{reason}。",
+                        (
+                            f"Episode Auto paused: {_task_label(failed, lang)} "
+                            f"{'cancelled' if failed.status == 'cancelled' else 'failed'}; {reason}."
+                            if lang == "en"
+                            else f"本集自动已暂停：{_task_label(failed, lang)}{('已取消' if failed.status == 'cancelled' else '失败')}，{reason}。"
+                        ),
                     )
                     return
                 compose = next((task for task in terminal if task.task_type == "compose_episode"), None)
                 if len(terminal) == 1:
-                    summary = f"✅ {_task_label(terminal[0])}已完成。"
+                    summary = (
+                        f"✅ {_task_label(terminal[0], lang)} complete."
+                        if lang == "en"
+                        else f"✅ {_task_label(terminal[0], lang)}已完成。"
+                    )
                 else:
-                    summary = f"✅ 本批 {len(terminal)} 个任务已完成。"
+                    summary = (
+                        f"✅ {len(terminal)} tasks in this batch are complete."
+                        if lang == "en"
+                        else f"✅ 本批 {len(terminal)} 个任务已完成。"
+                    )
                 if compose is not None:
-                    await self._notify(updated, f"{summary}正在展示第 {run.episode} 集成片。")
+                    await self._notify(
+                        updated,
+                        f"{summary}Showing Episode {run.episode} final cut."
+                        if lang == "en"
+                        else f"{summary}正在展示第 {run.episode} 集成片。",
+                    )
                     if not await self._owns_run(run_id):
                         return
                     await self._agent_continue(updated, final_delivery=True)
@@ -1053,7 +1165,12 @@ class DirectorAutoCoordinator:
                         return
                     await self._broadcast_status(completed)
                     return
-                await self._notify(updated, f"{summary}本集自动正在继续下一步。")
+                await self._notify(
+                    updated,
+                    f"{summary}Episode Auto is continuing to the next step."
+                    if lang == "en"
+                    else f"{summary}本集自动正在继续下一步。",
+                )
                 if not await self._owns_run(run_id):
                     return
                 await self._agent_continue(updated)
@@ -1071,9 +1188,18 @@ class DirectorAutoCoordinator:
                         run_id=run_id,
                         username=username,
                         project_id=project_id,
-                        reason="自动续跑未产生新的任务",
+                        reason=(
+                            "Auto-continuation produced no new tasks"
+                            if lang == "en"
+                            else "自动续跑未产生新的任务"
+                        ),
                     )
-                    await self._notify(run, "本集自动已暂停：当前步骤没有产生新的生成任务，请检查前置条件。")
+                    await self._notify(
+                        run,
+                        "Episode Auto paused: the current step produced no new generation task; please check the prerequisites."
+                        if lang == "en"
+                        else "本集自动已暂停：当前步骤没有产生新的生成任务，请检查前置条件。",
+                    )
                     return
                 taskless_continuations += 1
                 if not await self._owns_run(run_id):
@@ -1087,9 +1213,18 @@ class DirectorAutoCoordinator:
                         run_id=run_id,
                         username=username,
                         project_id=project_id,
-                        reason="自动续跑未产生写任务",
+                        reason=(
+                            "Auto-continuation produced no write task"
+                            if lang == "en"
+                            else "自动续跑未产生写任务"
+                        ),
                     )
-                    await self._notify(run, "本集自动已暂停：虾导没有启动新的生成步骤，请检查当前前置条件。")
+                    await self._notify(
+                        run,
+                        "Episode Auto paused: Xia Director did not start a new generation step; please check the prerequisites."
+                        if lang == "en"
+                        else "本集自动已暂停：虾导没有启动新的生成步骤，请检查当前前置条件。",
+                    )
                     return
                 await asyncio.sleep(POLL_SECONDS)
                 continue

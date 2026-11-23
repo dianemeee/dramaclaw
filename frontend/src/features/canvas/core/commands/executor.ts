@@ -135,6 +135,18 @@ function resolveNodeId(rawId: string, clientIdMap: Map<string, string>): string 
 }
 
 /** Receipt label for a command. */
+// Resolves a command label: the translate hook may return undefined, an empty
+// string, or the key itself (identity fallback in tests / missing locale key)
+// — all of those fall back to the Chinese label so receipts stay readable.
+function translatedCommandLabel(
+  translate: (key: string) => string,
+  key: string,
+  fallback: string,
+): string {
+  const value = translate(key);
+  return value && value !== key ? value : fallback;
+}
+
 export function canvasCommandLabel(
   command: CanvasChatCommand,
   translate: (key: string) => string,
@@ -142,75 +154,75 @@ export function canvasCommandLabel(
   switch (command.type) {
     case "html_artifact": return translate("htmlArtifact.saveCommand");
     case "create_node":
-      return "创建节点";
+      return translatedCommandLabel(translate, "canvas.command.createNode", "创建节点");
     case "add_next_node":
-      return "添加下游节点";
+      return translatedCommandLabel(translate, "canvas.command.addNextNode", "添加下游节点");
     case "update_node_data":
-      return "更新节点";
+      return translatedCommandLabel(translate, "canvas.command.updateNodeData", "更新节点");
     case "delete_nodes":
-      return "删除节点";
+      return translatedCommandLabel(translate, "canvas.command.deleteNodes", "删除节点");
     case "clear_canvas":
-      return "清空画布";
+      return translatedCommandLabel(translate, "canvas.command.clearCanvas", "清空画布");
     case "delete_edges":
-      return "断开连接";
+      return translatedCommandLabel(translate, "canvas.command.deleteEdges", "断开连接");
     case "create_edge":
-      return "创建连接";
+      return translatedCommandLabel(translate, "canvas.command.createEdge", "创建连接");
     case "layout_nodes":
-      return "整理布局";
+      return translatedCommandLabel(translate, "canvas.command.layoutNodes", "整理布局");
     case "group_nodes":
-      return "创建普通组";
+      return translatedCommandLabel(translate, "canvas.command.groupNodes", "创建普通组");
     case "move_nodes":
-      return "移动节点";
+      return translatedCommandLabel(translate, "canvas.command.moveNodes", "移动节点");
     case "select_nodes":
-      return "选中节点";
+      return translatedCommandLabel(translate, "canvas.command.selectNodes", "选中节点");
     case "run_node_action":
-      if (command.action === "translate_text") return "翻译文本";
-      if (command.action === "reverse_prompt") return "图片反推提示词";
-      if (command.action === "generate_text_video") return "文生视频";
-      if (command.action === "generate_story_script") return "生成故事脚本";
-      if (command.action === "open_upload_picker") return "打开上传选择";
-      if (command.action === "generate_image") return "生成图片";
-      if (command.action === "generate_audio") return "生成音频";
-      if (command.action === "open_voice_picker") return "打开音色选择";
-      if (command.action === "generate_video") return "生成视频";
-      if (command.action === "run_skill") return "运行技能";
-      if (command.action === "open_video_compose_modal") return "打开视频合成与剪辑";
-      if (command.action === "auto_compose_video") return "自动合成视频";
-      if (command.action === "open_director_world") return "打开导演世界";
-      if (command.action === "generate_3gs_world") return "生成 3GS 世界";
-      if (command.action === "open_split_storyboard_tool") return "打开分格抽取";
-      if (command.action === "run_matting_tool") return "抠图";
-      if (command.action === "run_upscale_tool") return "高清放大";
-      if (command.action === "run_outpaint_tool") return "扩图";
-      if (command.action === "run_scene360_tool") return "生成 360 全景";
-      if (command.action === "run_grid_multi_camera") return "生成多机位九宫格";
-      if (command.action === "run_grid_plot_four") return "生成剧情四宫格";
-      if (command.action === "run_grid_face_three_view") return "生成面部三视图";
-      if (command.action === "run_grid_product_three_view") return "生成产品三视图";
-      if (command.action === "run_grid_serial_storyboard_25") return "生成连续分镜 25 格";
-      if (command.action === "run_grid_cinematic_light_correction") return "生成电影感光影修正";
-      if (command.action === "run_grid_character_three_view") return "生成角色三视图";
-      if (command.action === "run_grid_scene_setting_sheet") return "生成场景设定图";
-      if (command.action === "run_grid_frame_projection_3s_later") return "推演 3 秒后画面";
-      if (command.action === "run_grid_frame_projection_5s_earlier") return "推演 5 秒前画面";
-      if (command.action === "open_video_viewer") return "打开视频";
-      if (command.action === "download_video") return "下载视频";
-      if (command.action === "open_video_clip_tool") return "打开视频剪辑";
-      if (command.action === "open_video_upscale_tool") return "打开视频高清";
-      if (command.action === "run_video_analyze_story") return "解析视频";
-      if (command.action === "run_audio_separate") return "分离音视频";
-      if (command.action === "download_audio") return "下载音频";
-      if (command.action === "open_video_subtitle_erase_smart") return "智能去字幕";
-      if (command.action === "open_video_subtitle_erase_box") return "框选去字幕";
+      if (command.action === "translate_text") return translatedCommandLabel(translate, "canvas.command.runNodeAction.translateText", "翻译文本");
+      if (command.action === "reverse_prompt") return translatedCommandLabel(translate, "canvas.command.runNodeAction.reversePrompt", "图片反推提示词");
+      if (command.action === "generate_text_video") return translatedCommandLabel(translate, "canvas.command.runNodeAction.generateTextVideo", "文生视频");
+      if (command.action === "generate_story_script") return translatedCommandLabel(translate, "canvas.command.runNodeAction.generateStoryScript", "生成故事脚本");
+      if (command.action === "open_upload_picker") return translatedCommandLabel(translate, "canvas.command.runNodeAction.openUploadPicker", "打开上传选择");
+      if (command.action === "generate_image") return translatedCommandLabel(translate, "canvas.command.runNodeAction.generateImage", "生成图片");
+      if (command.action === "generate_audio") return translatedCommandLabel(translate, "canvas.command.runNodeAction.generateAudio", "生成音频");
+      if (command.action === "open_voice_picker") return translatedCommandLabel(translate, "canvas.command.runNodeAction.openVoicePicker", "打开音色选择");
+      if (command.action === "generate_video") return translatedCommandLabel(translate, "canvas.command.runNodeAction.generateVideo", "生成视频");
+      if (command.action === "run_skill") return translatedCommandLabel(translate, "canvas.command.runNodeAction.runSkill", "运行技能");
+      if (command.action === "open_video_compose_modal") return translatedCommandLabel(translate, "canvas.command.runNodeAction.openVideoComposeModal", "打开视频合成与剪辑");
+      if (command.action === "auto_compose_video") return translatedCommandLabel(translate, "canvas.command.runNodeAction.autoComposeVideo", "自动合成视频");
+      if (command.action === "open_director_world") return translatedCommandLabel(translate, "canvas.command.runNodeAction.openDirectorWorld", "打开导演世界");
+      if (command.action === "generate_3gs_world") return translatedCommandLabel(translate, "canvas.command.runNodeAction.generate3gsWorld", "生成 3GS 世界");
+      if (command.action === "open_split_storyboard_tool") return translatedCommandLabel(translate, "canvas.command.runNodeAction.openSplitStoryboardTool", "打开分格抽取");
+      if (command.action === "run_matting_tool") return translatedCommandLabel(translate, "canvas.command.runNodeAction.runMattingTool", "抠图");
+      if (command.action === "run_upscale_tool") return translatedCommandLabel(translate, "canvas.command.runNodeAction.runUpscaleTool", "高清放大");
+      if (command.action === "run_outpaint_tool") return translatedCommandLabel(translate, "canvas.command.runNodeAction.runOutpaintTool", "扩图");
+      if (command.action === "run_scene360_tool") return translatedCommandLabel(translate, "canvas.command.runNodeAction.runScene360Tool", "生成 360 全景");
+      if (command.action === "run_grid_multi_camera") return translatedCommandLabel(translate, "canvas.command.runNodeAction.runGridMultiCamera", "生成多机位九宫格");
+      if (command.action === "run_grid_plot_four") return translatedCommandLabel(translate, "canvas.command.runNodeAction.runGridPlotFour", "生成剧情四宫格");
+      if (command.action === "run_grid_face_three_view") return translatedCommandLabel(translate, "canvas.command.runNodeAction.runGridFaceThreeView", "生成面部三视图");
+      if (command.action === "run_grid_product_three_view") return translatedCommandLabel(translate, "canvas.command.runNodeAction.runGridProductThreeView", "生成产品三视图");
+      if (command.action === "run_grid_serial_storyboard_25") return translatedCommandLabel(translate, "canvas.command.runNodeAction.runGridSerialStoryboard25", "生成连续分镜 25 格");
+      if (command.action === "run_grid_cinematic_light_correction") return translatedCommandLabel(translate, "canvas.command.runNodeAction.runGridCinematicLightCorrection", "生成电影感光影修正");
+      if (command.action === "run_grid_character_three_view") return translatedCommandLabel(translate, "canvas.command.runNodeAction.runGridCharacterThreeView", "生成角色三视图");
+      if (command.action === "run_grid_scene_setting_sheet") return translatedCommandLabel(translate, "canvas.command.runNodeAction.runGridSceneSettingSheet", "生成场景设定图");
+      if (command.action === "run_grid_frame_projection_3s_later") return translatedCommandLabel(translate, "canvas.command.runNodeAction.runGridFrameProjection3sLater", "推演 3 秒后画面");
+      if (command.action === "run_grid_frame_projection_5s_earlier") return translatedCommandLabel(translate, "canvas.command.runNodeAction.runGridFrameProjection5sEarlier", "推演 5 秒前画面");
+      if (command.action === "open_video_viewer") return translatedCommandLabel(translate, "canvas.command.runNodeAction.openVideoViewer", "打开视频");
+      if (command.action === "download_video") return translatedCommandLabel(translate, "canvas.command.runNodeAction.downloadVideo", "下载视频");
+      if (command.action === "open_video_clip_tool") return translatedCommandLabel(translate, "canvas.command.runNodeAction.openVideoClipTool", "打开视频剪辑");
+      if (command.action === "open_video_upscale_tool") return translatedCommandLabel(translate, "canvas.command.runNodeAction.openVideoUpscaleTool", "打开视频高清");
+      if (command.action === "run_video_analyze_story") return translatedCommandLabel(translate, "canvas.command.runNodeAction.runVideoAnalyzeStory", "解析视频");
+      if (command.action === "run_audio_separate") return translatedCommandLabel(translate, "canvas.command.runNodeAction.runAudioSeparate", "分离音视频");
+      if (command.action === "download_audio") return translatedCommandLabel(translate, "canvas.command.runNodeAction.downloadAudio", "下载音频");
+      if (command.action === "open_video_subtitle_erase_smart") return translatedCommandLabel(translate, "canvas.command.runNodeAction.openVideoSubtitleEraseSmart", "智能去字幕");
+      if (command.action === "open_video_subtitle_erase_box") return translatedCommandLabel(translate, "canvas.command.runNodeAction.openVideoSubtitleEraseBox", "框选去字幕");
       if (command.action === "run_video_breakdown") return translate("nodeToolbar.video.frameAnalysis");
       if (command.action === "start_video_breakdown") return translate("videoBreakdown.start");
       if (command.action === "open_video_crop_tool") return translate("nodeToolbar.video.frameCrop");
       if (command.action === "open_video_extend_tool") return translate("nodeToolbar.video.extend");
       if (command.action === "run_video_depth_capture") return translate("nodeToolbar.video.motionCapture");
-      if (command.action === "capture_pano_current_view") return "截取当前 360 视角";
-      if (command.action === "capture_pano_2x2_views") return "截取 360 四视角";
-      if (command.action === "capture_pano_4x3_views") return "截取 360 十二视角";
-      if (command.action === "download_image") return "下载图片";
+      if (command.action === "capture_pano_current_view") return translatedCommandLabel(translate, "canvas.command.runNodeAction.capturePanoCurrentView", "截取当前 360 视角");
+      if (command.action === "capture_pano_2x2_views") return translatedCommandLabel(translate, "canvas.command.runNodeAction.capturePano2x2Views", "截取 360 四视角");
+      if (command.action === "capture_pano_4x3_views") return translatedCommandLabel(translate, "canvas.command.runNodeAction.capturePano4x3Views", "截取 360 十二视角");
+      if (command.action === "download_image") return translatedCommandLabel(translate, "canvas.command.runNodeAction.downloadImage", "下载图片");
       if (command.action === "generate_html") return translate("htmlArtifact.actionGenerate");
       if (command.action === "update_source") return translate("htmlArtifact.actionSaveSource");
       if (command.action === "select_version") return translate("htmlArtifact.actionSelectVersion");
@@ -218,16 +230,16 @@ export function canvasCommandLabel(
       if (command.action === "open") return translate("htmlArtifact.actionOpen");
       if (command.action === "export") return translate("htmlArtifact.actionExport");
       if (command.action === "upload") return translate("htmlArtifact.actionUpload");
-      if (command.action === "set_pano_current_view_as_background") return "设为当前背景";
-      if (command.action === "reset_pano_view") return "复位 360 视角";
-      if (command.action === "sync_beat_context_to_mainline") return "同步镜头上下文";
-      return "打开节点动作";
+      if (command.action === "set_pano_current_view_as_background") return translatedCommandLabel(translate, "canvas.command.runNodeAction.setPanoCurrentViewAsBackground", "设为当前背景");
+      if (command.action === "reset_pano_view") return translatedCommandLabel(translate, "canvas.command.runNodeAction.resetPanoView", "复位 360 视角");
+      if (command.action === "sync_beat_context_to_mainline") return translatedCommandLabel(translate, "canvas.command.runNodeAction.syncBeatContextToMainline", "同步镜头上下文");
+      return translatedCommandLabel(translate, "canvas.command.runNodeAction.openNodeAction", "打开节点动作");
     case "open_mainline_projection":
-      return "打开主线虾画";
+      return translatedCommandLabel(translate, "canvas.command.openMainlineProjection", "打开主线虾画");
     case "run_workflow":
-      return "运行工作流";
+      return translatedCommandLabel(translate, "canvas.command.runWorkflow", "运行工作流");
     default:
-      return "画布操作";
+      return translatedCommandLabel(translate, "canvas.command.canvasOperation", "画布操作");
   }
 }
 
@@ -951,7 +963,7 @@ export function* applyCanvasCommands(
       commandIndex: -1,
       type: "validate",
       status: "error",
-      label: "校验画布命令",
+      label: translatedCommandLabel(env.translate, "canvas.command.validate", "校验画布命令"),
       error: result.errors.join("; "),
     });
     return result;
@@ -967,7 +979,7 @@ export function* applyCanvasCommands(
           commandIndex,
           type: command.type,
           status: "success",
-          label: "工作流已存在，跳过重复创建",
+          label: translatedCommandLabel(env.translate, "canvas.command.workflowAlreadyExists", "工作流已存在，跳过重复创建"),
           nodeId: commandPrimaryNodeId(command),
           output: {
             skipped: true,
@@ -1019,7 +1031,7 @@ export function* applyCanvasCommands(
                 commandIndex: currentCommandIndex,
                 type: command.type,
                 status: "success",
-                label: "复用已有工作流节点",
+                label: translatedCommandLabel(env.translate, "canvas.command.reuseWorkflowNode", "复用已有工作流节点"),
                 nodeId: command.client_id,
                 createdNodeId: existingWorkflowNode.id,
                 output: {
@@ -1195,7 +1207,7 @@ export function* applyCanvasCommands(
                 commandIndex: currentCommandIndex,
                 type: command.type,
                 status: "success",
-                label: "跳过无效连接",
+                label: translatedCommandLabel(env.translate, "canvas.command.skipInvalidConnection", "跳过无效连接"),
                 nodeId: source,
                 error: invalidReason,
               });
@@ -1328,7 +1340,7 @@ export function* applyCanvasCommands(
           commandIndex,
           type: "group_nodes",
           status: "success",
-          label: "创建普通组",
+          label: translatedCommandLabel(env.translate, "canvas.command.groupNodes", "创建普通组"),
           nodeId: targetNodeIds[0],
           createdNodeId: groupId,
         });
@@ -1357,7 +1369,7 @@ export function* applyCanvasCommands(
           commandIndex,
           type: "group_nodes",
           status: "success",
-          label: "创建普通组",
+          label: translatedCommandLabel(env.translate, "canvas.command.groupNodes", "创建普通组"),
           nodeId: targetNodeIds[0],
           createdNodeId: groupId,
         });

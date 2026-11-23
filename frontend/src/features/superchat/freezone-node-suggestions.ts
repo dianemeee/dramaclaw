@@ -193,16 +193,29 @@ export function appendFreezoneNodeMentions(
   return result;
 }
 
-/** 栏目 → 悬浮预览里显示的中文类型标签。 */
-const FREEZONE_NODE_COLUMN_LABEL: Record<AssetBoardColumn, string> = {
+/** 栏目 → 悬浮预览里显示的类型标签（英文 UI 下用 locale，测试环境回落中文）。 */
+const FREEZONE_NODE_COLUMN_LABEL_ZH: Record<AssetBoardColumn, string> = {
   text: "文本",
-  get previz() {
-    return i18next.t("previz.editor.title");
-  },
+  previz: "Previz",
   image: "图片",
   video: "视频",
   audio: "音频",
 };
+
+function freezoneNodeColumnLabel(column: AssetBoardColumn): string {
+  if (column === "previz") return i18next.t("previz.editor.title");
+  if (!i18next.isInitialized) return FREEZONE_NODE_COLUMN_LABEL_ZH[column];
+  const value = i18next.t(`freezone.chat.nodeColumn.${column}`, {
+    defaultValue: FREEZONE_NODE_COLUMN_LABEL_ZH[column],
+  });
+  return typeof value === "string" ? value : FREEZONE_NODE_COLUMN_LABEL_ZH[column];
+}
+
+function freezoneNodeReferenceLabel(): string {
+  if (!i18next.isInitialized) return "引用";
+  const value = i18next.t("freezone.chat.nodeColumn.reference", { defaultValue: "引用" });
+  return typeof value === "string" ? value : "引用";
+}
 
 /**
  * 输入框里引用 chip 的悬浮预览内容。
@@ -235,6 +248,6 @@ export function buildFreezoneNodePreviewInfo(
     label,
     thumbnailUrl,
     videoPosterUrl,
-    typeLabel: meta ? FREEZONE_NODE_COLUMN_LABEL[meta.column] : "引用",
+    typeLabel: meta ? freezoneNodeColumnLabel(meta.column) : freezoneNodeReferenceLabel(),
   };
 }

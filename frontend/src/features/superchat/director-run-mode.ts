@@ -1,3 +1,4 @@
+import i18next from "i18next";
 import type { TaskState } from "@/task-center/types";
 
 export type DirectorRunMode = "manual_confirm" | "episode_auto";
@@ -27,6 +28,33 @@ export type DirectorAutoTaskDecision =
 
 const STORAGE_PREFIX = "director.episodeRunMode";
 const MAX_HANDLED_KEYS = 80;
+
+// Locale-aware text for the director run-mode transport instructions. When
+// i18next is initialized (the app), the locale file wins; when it is not
+// (unit tests), the Chinese defaultValue is used, so existing tests that
+// assert the Chinese wording keep passing.
+function directorT(
+  key: string,
+  defaultValue: string,
+  vars: Record<string, string | number> = {},
+): string {
+  let text = defaultValue;
+  if (i18next.isInitialized) {
+    const value = i18next.t(key, { ...vars, defaultValue } as never);
+    if (typeof value === "string") text = value;
+  }
+  for (const [name, value] of Object.entries(vars)) {
+    text = text.split(`{{${name}}}`).join(String(value));
+  }
+  return text;
+}
+
+function directorErrorsJoiner(): string {
+  return i18next.isInitialized
+    && (i18next.resolvedLanguage ?? i18next.language ?? "").toLowerCase().startsWith("en")
+    ? "; "
+    : "；";
+}
 
 const MAINLINE_EPISODE_TASK_TYPES = new Set([
   "build_episodes",
@@ -163,8 +191,8 @@ export function isDirectorEpisodeAutoSession(state: DirectorAutoRunState): boole
       || state.confirmationStage === "awaiting_intervention");
 }
 
-const AUTO_START_INTENT_RE = /(?:开始|启动|执行|推进|继续|确认|同意|可以(?:开始)?|开始吧|继续吧|确认吧)/u;
-const AUTO_NEGATED_START_RE = /(?:不要|别|暂不|先不|取消|停止|暂停).{0,4}(?:开始|启动|执行|推进|继续|确认)/u;
+const AUTO_START_INTENT_RE = /(?:开始|启动|执行|推进|继续|确认|同意|可以(?:开始)?|开始吧|继续吧|确认吧|\b(?:start|continue|confirm|proceed|go ahead|yes)\b)/iu;
+const AUTO_NEGATED_START_RE = /(?:不要|别|暂不|先不|取消|停止|暂停).{0,4}(?:开始|启动|执行|推进|继续|确认)|(?:don't|do not|not yet|not now|wait|cancel|stop|pause).{0,12}(?:start|continue|proceed|confirm)/iu;
 
 export function isDirectorEpisodeAutoStartIntent(text: string): boolean {
   const normalized = text.trim();
@@ -177,39 +205,53 @@ export function directorAutoConfirmationTransportText(
   text: string,
   options: { voiceChoiceRequired?: boolean; voiceErrors?: string[] } = {},
 ): string {
+  const mode = directorT("freezone.chat.directorRunMode.modeName", "本集自动");
   const voiceInstruction = options.voiceChoiceRequired
-    ? " Before starting, the user must choose a voice policy. Explicitly present both Chinese choices: " +
-      "‘1）缺失声线由虾导自动匹配系统声线；2）我会到「虾塘」上传或录制自定义声线。’ " +
-      `${options.voiceErrors?.length ? `Known missing items: ${options.voiceErrors.join("；")}. ` : ""}` +
-      "Ask the user to reply 系统声线 or 自定义声线; do not start yet."
-    : " Then ask the user to reply 继续 or 确认 to start.";
-  return `${text}\n\n[DRAMACLAW_RUN_MODE_CONFIRMATION]\n`+
-    "The user selected 本集自动 but has not completed the required second confirmation. " +
-    "Do not call any write, generation, or mutation tool in this turn. Reply briefly in Chinese: " +
-    "state that 本集自动 will safely advance the current episode until the final composition is " +
-    "complete, and will pause on failure, unmet prerequisites, destructive or ambiguous actions, " +
-    `or choices that require the user.${voiceInstruction}\n` +
+    ? directorT(
+        "freezone.chat.directorRunMode.confirmationVoiceInstruction",
+        " Before starting, the user must choose a voice policy. Explicitly present both Chinese choices: ‘1）缺失声线由虾导自动匹配系统声线；2）我会到「虾塘」上传或录制自定义声线。’{{errors}} Ask the user to reply 系统声线 or 自定义声线; do not start yet.",
+        {
+          errors: options.voiceErrors?.length
+            ? ` Known missing items: ${options.voiceErrors.join(directorErrorsJoiner())}. `
+            : "",
+        },
+      )
+    : directorT(
+        "freezone.chat.directorRunMode.confirmationStartInstruction",
+        " Then ask the user to reply 继续 or 确认 to start.",
+      );
+  return `${text}\n\n[DRAMACLAW_RUN_MODE_CONFIRMATION]\n` +
+    directorT(
+      "freezone.chat.directorRunMode.confirmationBody",
+      "The user selected {{mode}} but has not completed the required second confirmation. Do not call any write, generation, or mutation tool in this turn. Reply briefly in Chinese: state that {{mode}} will safely advance the current episode until the final composition is complete, and will pause on failure, unmet prerequisites, destructive or ambiguous actions, or choices that require the user.",
+      { mode },
+    ) +
+    `${voiceInstruction}\n` +
     "[/DRAMACLAW_RUN_MODE_CONFIRMATION]";
 }
 
 export function resolveDirectorVoicePolicy(text: string): DirectorVoicePolicy | null {
   const normalized = text.trim();
-  const system = /(?:系统声(?:线|音|一)|系统配音|虾导匹配)/u.test(normalized);
-  const custom = /(?:自定义声(?:线|音)|上传(?:或录制)?|录制声线|声音采样|自定义配音)/u.test(normalized);
+  const system = /(?:系统声(?:线|音|一)|系统配音|虾导匹配|system voice|system audio)/iu.test(normalized);
+  const custom = /(?:自定义声(?:线|音)|上传(?:或录制)?|录制声线|声音采样|自定义配音|custom voice|upload|record(?:ing)?(?: a)? voice|voice sample)/iu.test(normalized);
   if (system === custom) return null;
   return system ? "system" : "custom";
 }
 
 export function emphasizeDirectorVoiceChoiceLabels(text: string): string {
+  const pairs: string[][] = [];
   if (
-    !text.includes("系统声线")
-    || !text.includes("自定义声线")
-    || !/(?:请回复|请选择|你选哪种|选一个)/u.test(text)
-  ) {
-    return text;
-  }
-  const labels = ["系统声线", "自定义声线"] as const;
-  return labels.reduce((current, label, index) => {
+    text.includes("系统声线")
+    && text.includes("自定义声线")
+    && /(?:请回复|请选择|你选哪种|选一个)/u.test(text)
+  ) pairs.push(["系统声线", "自定义声线"]);
+  if (
+    text.includes("System voice")
+    && text.includes("Custom voice")
+    && /(?:reply|choose|pick one|which (?:one|kind))/iu.test(text)
+  ) pairs.push(["System voice", "Custom voice"]);
+  if (pairs.length === 0) return text;
+  return pairs.flat().reduce((current, label, index) => {
     const placeholder = `\uE000director-voice-${index}\uE001`;
     return current
       .split(`**${label}**`).join(placeholder)
@@ -219,10 +261,12 @@ export function emphasizeDirectorVoiceChoiceLabels(text: string): string {
 }
 
 export function directorAutoVoiceChoiceTransportText(text: string): string {
-  return `${text}\n\n[DRAMACLAW_VOICE_POLICY_REQUIRED]\n`+
-    "Do not start episode auto and do not call generation tools. The user's voice policy is still " +
-    "unclear. Ask only: ‘请选择：1）缺失声线由虾导自动匹配系统声线；2）我会到「虾塘」上传或录制自定义声线。’ " +
-    "Ask them to reply 系统声线 or 自定义声线.\n[/DRAMACLAW_VOICE_POLICY_REQUIRED]";
+  return `${text}\n\n[DRAMACLAW_VOICE_POLICY_REQUIRED]\n` +
+    directorT(
+      "freezone.chat.directorRunMode.voiceChoiceQuestion",
+      "Do not start episode auto and do not call generation tools. The user's voice policy is still unclear. Ask only: ‘请选择：1）缺失声线由虾导自动匹配系统声线；2）我会到「虾塘」上传或录制自定义声线。’ Ask them to reply 系统声线 or 自定义声线.",
+    ) +
+    "\n[/DRAMACLAW_VOICE_POLICY_REQUIRED]";
 }
 
 export function markDirectorAutoHandled(
@@ -238,54 +282,37 @@ export function markDirectorAutoHandled(
 }
 
 export function directorAutoRunTransportText(text: string): string {
-  return `${text}\n\n[DRAMACLAW_RUN_MODE]\nmode=episode_auto\n`+
-    "The user enabled 本集自动 in the outer 虾导 UI. Treat this as approval to select and start " +
-    "the next safe mainline step without asking for per-step confirmation. Keep the one-write-per-turn " +
-    "limit. Before any write, inspect the current artifact and the latest task for that exact step. " +
-    "If the artifact is merely missing and prerequisites are ready, start its generation. Do not let " +
-    "an unrelated or superseded historical failed task block a missing safe step. Pause only when the " +
-    "latest attempt for the current required step failed or was cancelled. Stop for destructive " +
-    "overwrite/delete, missing voice choice, ambiguity, or unmet prerequisites. Never describe one " +
-    "task as failed and then silently proceed as though that same attempt succeeded. " +
-    "If this user-authored message may change, redo, replace, or reconfigure project output, do not " +
-    "perform that mutation yet. First call dramaclaw_control_episode_auto(action='suspend', reason=...) " +
-    "and ask the user to confirm the intended change. Questions, explanations, and progress checks do " +
-    "not require suspension. If the user explicitly asks to stop automatic production, call " +
-    "dramaclaw_control_episode_auto(action='pause'). Never cancel an already queued or running media " +
-    "task unless the user separately and explicitly confirms cancellation. This mode never " +
-    "applies Agent-credit billing. The durable auto coordinator is already running now: do not merely " +
-    "describe what 本集自动 will do in the future. Inspect current state, report the concrete active " +
-    "task or start the next safe task, and say clearly that automatic production has started.\n" +
-    "[/DRAMACLAW_RUN_MODE]";
+  const mode = directorT("freezone.chat.directorRunMode.modeName", "本集自动");
+  const director = directorT("freezone.chat.directorRunMode.directorName", "虾导");
+  return `${text}\n\n[DRAMACLAW_RUN_MODE]\nmode=episode_auto\n` +
+    directorT(
+      "freezone.chat.directorRunMode.runModeBody",
+      "The user enabled {{mode}} in the outer {{director}} UI. Treat this as approval to select and start the next safe mainline step without asking for per-step confirmation. Keep the one-write-per-turn limit. Before any write, inspect the current artifact and the latest task for that exact step. If the artifact is merely missing and prerequisites are ready, start its generation. Do not let an unrelated or superseded historical failed task block a missing safe step. Pause only when the latest attempt for the current required step failed or was cancelled. Stop for destructive overwrite/delete, missing voice choice, ambiguity, or unmet prerequisites. Never describe one task as failed and then silently proceed as though that same attempt succeeded. If this user-authored message may change, redo, replace, or reconfigure project output, do not perform that mutation yet. First call dramaclaw_control_episode_auto(action='suspend', reason=...) and ask the user to confirm the intended change. Questions, explanations, and progress checks do not require suspension. If the user explicitly asks to stop automatic production, call dramaclaw_control_episode_auto(action='pause'). Never cancel an already queued or running media task unless the user separately and explicitly confirms cancellation. This mode never applies Agent-credit billing. The durable auto coordinator is already running now: do not merely describe what {{mode}} will do in the future. Inspect current state, report the concrete active task or start the next safe task, and say clearly that automatic production has started.",
+      { mode, director },
+    ) +
+    "\n[/DRAMACLAW_RUN_MODE]";
 }
 
 export function directorAutoUserMessageTransportText(text: string): string {
-  return `${text}\n\n[DRAMACLAW_AUTO_USER_MESSAGE]\n`+
-    "The durable backend already owns progression of the active outer 虾导 episode auto run. First " +
-    "understand the user's actual intent; do not start the next mainline task merely because this " +
-    "message arrived. For a question, explanation, result view, or progress/status request, answer or " +
-    "read only and leave automatic progression running. If the message may change, redo, replace, or " +
-    "reconfigure project output, call dramaclaw_control_episode_auto(action='suspend', reason=...) " +
-    "before asking for confirmation, and do not perform the mutation in this turn. If the user " +
-    "explicitly asks to stop or switch to manual mode, call " +
-    "dramaclaw_control_episode_auto(action='pause'). Never cancel a queued or running generation task " +
-    "unless the user explicitly confirms cancellation of that exact task.\n" +
-    "[/DRAMACLAW_AUTO_USER_MESSAGE]";
+  const director = directorT("freezone.chat.directorRunMode.directorName", "虾导");
+  return `${text}\n\n[DRAMACLAW_AUTO_USER_MESSAGE]\n` +
+    directorT(
+      "freezone.chat.directorRunMode.userMessageBody",
+      "The durable backend already owns progression of the active outer {{director}} episode auto run. First understand the user's actual intent; do not start the next mainline task merely because this message arrived. For a question, explanation, result view, or progress/status request, answer or read only and leave automatic progression running. If the message may change, redo, replace, or reconfigure project output, call dramaclaw_control_episode_auto(action='suspend', reason=...) before asking for confirmation, and do not perform the mutation in this turn. If the user explicitly asks to stop or switch to manual mode, call dramaclaw_control_episode_auto(action='pause'). Never cancel a queued or running generation task unless the user explicitly confirms cancellation of that exact task.",
+      { director },
+    ) +
+    "\n[/DRAMACLAW_AUTO_USER_MESSAGE]";
 }
 
 export function directorAutoInterventionTransportText(text: string): string {
-  return `${text}\n\n[DRAMACLAW_AUTO_INTERVENTION_CONFIRMATION]\n`+
-    "The outer 虾导 episode auto run is suspended while waiting for the user's answer about a possible " +
-    "modification. Interpret the answer semantically. If the user declines/cancels the modification or " +
-    "asks to keep the original result and continue automatically, call " +
-    "dramaclaw_control_episode_auto(action='resume') and acknowledge that automatic production resumed. " +
-    "If the user confirms the modification, first call " +
-    "dramaclaw_control_episode_auto(action='pause') to leave automatic mode, then handle at most one " +
-    "confirmed project mutation under normal one-write-per-turn rules. If the answer is ambiguous, ask " +
-    "one concise follow-up " +
-    "and keep the run suspended. A queued or running generation task must continue by default and must " +
-    "not be cancelled unless the user explicitly confirms cancelling that exact task.\n" +
-    "[/DRAMACLAW_AUTO_INTERVENTION_CONFIRMATION]";
+  const director = directorT("freezone.chat.directorRunMode.directorName", "虾导");
+  return `${text}\n\n[DRAMACLAW_AUTO_INTERVENTION_CONFIRMATION]\n` +
+    directorT(
+      "freezone.chat.directorRunMode.interventionBody",
+      "The outer {{director}} episode auto run is suspended while waiting for the user's answer about a possible modification. Interpret the answer semantically. If the user declines/cancels the modification or asks to keep the original result and continue automatically, call dramaclaw_control_episode_auto(action='resume') and acknowledge that automatic production resumed. If the user confirms the modification, first call dramaclaw_control_episode_auto(action='pause') to leave automatic mode, then handle at most one confirmed project mutation under normal one-write-per-turn rules. If the answer is ambiguous, ask one concise follow-up and keep the run suspended. A queued or running generation task must continue by default and must not be cancelled unless the user explicitly confirms cancelling that exact task.",
+      { director },
+    ) +
+    "\n[/DRAMACLAW_AUTO_INTERVENTION_CONFIRMATION]";
 }
 
 function taskTimestamp(task: TaskState): number {

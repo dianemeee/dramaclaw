@@ -90,6 +90,12 @@ function hasRecipeBoundary(value: unknown): boolean {
   return Array.isArray(value) && value.some((item) => readString(item));
 }
 
+function localizeAgentCatalogText(id: string, field: "name" | "description", fallback: string): string {
+  if (!i18next.isInitialized || !fallback) return fallback;
+  const value = i18next.t(`freezone.agentCatalog.${id}.${field}`, { defaultValue: fallback });
+  return typeof value === "string" ? value : fallback;
+}
+
 export function toFreezoneSkillSuggestions(
   items: FreezoneAgentConfigPayload[] | undefined,
 ): FreezoneSkillSuggestion[] {
@@ -101,16 +107,17 @@ export function toFreezoneSkillSuggestions(
     const triggers = item.triggers && typeof item.triggers === "object"
       ? item.triggers as Record<string, unknown>
       : {};
+    const catalogName =
+      readString(item.name)
+      || readString(item.display_name)
+      || readString(item.displayName)
+      || readString(item.title)
+      || id;
     return [{
       id,
-      label:
-        readString(item.name)
-        || readString(item.display_name)
-        || readString(item.displayName)
-        || readString(item.title)
-        || id,
+      label: localizeAgentCatalogText(id, "name", catalogName),
       category: readString(item.category),
-      description: readString(item.description),
+      description: localizeAgentCatalogText(id, "description", readString(item.description)),
       keywords: readKeywords(triggers.keywords),
     }];
   });

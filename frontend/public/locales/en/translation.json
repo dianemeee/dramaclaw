@@ -1066,7 +1066,20 @@
         "generateAudio": "Generate audio",
         "muteAudio": "Do not generate audio",
         "audioOn": "Audio",
-        "audioOff": "Muted"
+        "audioOff": "Muted",
+        "questionTitle": {
+          "image_model": "Image model",
+          "image_aspect_ratio": "Image aspect ratio",
+          "image_resolution": "Image resolution",
+          "image_quality": "Image quality",
+          "image_variants_per_node": "Images per node",
+          "video_model": "Video model",
+          "video_aspect_ratio": "Video aspect ratio",
+          "video_resolution": "Video resolution",
+          "video_duration_seconds": "Video duration",
+          "video_generate_audio": "Video sound",
+          "video_variants_per_node": "Videos per node"
+        }
       },
       "clarification": {
         "submitFailed": "Failed to submit additional information. Please try again.",
@@ -1079,10 +1092,313 @@
         "noAnswersCancelled": "This turn was cancelled without submitting options.",
         "noAnswersSkipped": "These questions were skipped.",
         "noAnswersSubmitted": "No specific options were submitted.",
-        "cancelledRequest": "The user cancelled this request."
+        "cancelledRequest": "The user cancelled this request.",
+        "nextQuestion": "Next question",
+        "previousQuestion": "Previous question",
+        "submitChoices": "Submit choices",
+        "continueWithChoices": "Continue with current choices",
+        "completeAllChoices": "Please complete all choices",
+        "chooseDirection": "Choose a direction; you can also add notes",
+        "chooseMultiple": "Multiple choices allowed; you can also add notes",
+        "multiple": "Multiple",
+        "addNotes": "Other notes...",
+        "optionFallback": "Option {{index}}",
+        "questionFallback": "Question {{index}}",
+        "needMoreInfo": "Need a bit more information",
+        "selectedCount": "Selected {{selected}} · {{answered}} / {{total}}",
+        "useRecommended": "Use recommended settings",
+        "skip": "Skip",
+        "submitting": "Submitting…",
+        "noQuestions": "No questions to choose from",
+        "noConfigQuestions": "Submitted, but no configurable questions were included.",
+        "skillStudioSelect": "Skill Studio selection",
+        "answersTitle": "Question answers",
+        "notSelected": "Not selected",
+        "unnamedOption": "Unnamed option",
+        "notePrefix": "Note: {{text}}",
+        "skippedAction": "Skipped",
+        "recommendedAction": "Used recommended settings",
+        "submittedAnswersCount": "Submitted answers · {{answered}} / {{total}}",
+        "draftSaved": "Added to DramaClaw Skills / Recipes",
+        "draftCancelled": "Cancelled; this draft will not be saved",
+        "draftRevising": "AI is adjusting; please add the revision direction in the follow-up questions",
+        "draftBeforeSave": "You can expand each item to fine-tune before saving",
+        "draftIncomplete": "Draft incomplete; this turn will not be saved",
+        "skillStudioAnswered": "I have completed the selection in the Skill Studio question card.",
+        "skillStudioSession": "Skill Studio session: {{id}}",
+        "cardTitle": "Card: {{title}}",
+        "choicesFollow": "My choices:",
+        "selectionDone": "I have completed the selection. Please continue with the current context.",
+        "clarificationDone": "I have completed the additional information selection.",
+        "clarificationId": "Clarification: {{id}}",
+        "answersFollow": "My answers:",
+        "followAnswers": "Please proceed with the answers above.",
+        "cancelModelSelection": "The user exited model selection; the shot modes or a compatible model need to be adjusted first.",
+        "revisionIntro": "This is the Skill Studio draft revision flow.",
+        "revisionOnlyExplicit": "Only treat an explicit choice or note in this answer as the revision direction; do not infer what the user wants to change from the current draft, the Recipe structure, or your own optimisation judgement.",
+        "revisionVague": "If this answer only picks a generic category (basic info, input parameters, capability module content, constraints, quality standards, execution flow, etc.), it is still not a concrete revision direction; ask one more specific question with freezone_request_user_clarification.",
+        "revisionConcrete": "Only when the user gives a concrete goal and method may you update the draft with freezone_patch_agent_catalog_draft, or replace larger Skill / Recipe content with the chunked draft tools.",
+        "revisionShowDraft": "After updating, call freezone_finish_agent_catalog_draft to show the new editable draft card.",
+        "revisionNoPlainText": "Do not reply with plain text only, do not only summarise the revision intent, do not ask whether to save, and do not show the unmodified old draft.",
+        "revisionAskAgain": "Only ask another question with freezone_request_user_clarification when the revision direction is still unclear.",
+        "recommendedResponse": "Please continue the Skill Studio flow with the recommended settings.",
+        "recommendedGenerate": "Please generate an editable Skill / Recipe draft directly for the current goal.",
+        "skipResponse": "I choose to skip the question card and go straight to Skill Studio draft generation.",
+        "skipGenerate": "Please generate a Skill / Recipe draft from the existing context.",
+        "draftCancelTitle": "The user cancelled saving the Skill Studio draft.",
+        "draftCancelNoWrite": "This draft will not be written to the DramaClaw catalog.",
+        "draftCancelNotRevision": "This is the user clicking Cancel, not a revision request and not a resubmission.",
+        "draftCancelOnlyConfirm": "Only confirm the cancellation; do not resubmit, redisplay, save or modify this draft.",
+        "draftRevisionStarted": "The user started a Skill Studio draft revision session.",
+        "draftRevisionCurrent": "Current draft: {{name}}",
+        "draftRevisionExplicit": "The user has explicitly said the current draft needs adjusting; do not ask again whether it needs adjusting.",
+        "draftRevisionNoSaveAsk": "Do not ask whether to save the current version, and do not offer save_now / save_current / confirm_save options; saving is handled only by the confirm button on the page draft card.",
+        "draftRevisionNotContinue": "This is not continuing the original draft, and not a request to redisplay the current draft.",
+        "draftRevisionDraftUse": "This result carries the current full draft; the draft is only for understanding what is being revised and for later partial patches; do not treat the draft content as the user's revision intent.",
+        "draftRevisionNoDirection": "The user has not given a concrete revision direction yet; the next step must be to call freezone_request_user_clarification to ask about the direction, scope or preference.",
+        "draftRevisionOneQuestion": "The clarification's questions array must contain exactly one question, asking directly what the user wants to change or how.",
+        "draftRevisionNoDraftTools": "Before the user answers the revision direction, do not call freezone_begin_agent_catalog_draft / freezone_put_agent_catalog_skill / freezone_put_agent_catalog_recipe / freezone_finish_agent_catalog_draft.",
+        "draftRevisionNoPatch": "Before the user answers the revision direction, do not call freezone_patch_agent_catalog_draft either.",
+        "draftRevisionNoFinishAsIs": "Do not call freezone_finish_agent_catalog_draft to display the current draft as-is.",
+        "draftRevisionVagueFollowUp": "After the user answers the revision direction, if the answer is still a generic category, keep asking; only when the answer contains a concrete goal and method should you partially patch or update the draft in chunks based on the current full draft.",
+        "draftRevisionNoFullCatalog": "Do not pass the full Skill / Recipe catalog in a single tool call.",
+        "draftRevisionNoPlainSummary": "Do not summarise the revision result in plain text; do not only explain what changed; do not let the user save before the updated draft is shown."
       },
       "canvasCommandsCancelled": "Canvas operation timed out and was cancelled automatically.",
-      "resizeWidth": "Resize chat width"
+      "resizeWidth": "Resize chat width",
+      "approval": {
+        "pendingTitle": "Canvas operations pending confirmation",
+        "planDescription": "The agent plans to run {{count}} operations; they will only be applied to the canvas after you confirm.",
+        "executingBadge": "Executing",
+        "confirmBadge": "Confirm",
+        "humanReviewUnsupportedMode": "The current text-to-video mode does not support human verification. Turn off human verification to continue, or cancel and use a video mode with reference media. No video generation task has been submitted yet.",
+        "humanReviewUnsupportedModel": "The current model does not support human verification. Please choose one first. No video generation task has been submitted yet.",
+        "switchModelAria": "Switch to a model that supports human verification",
+        "switchModel": "Switch model",
+        "disableHumanReview": "Turn off human verification for this video",
+        "cancelGeneration": "Cancel this generation",
+        "humanReviewStillRejected": "It may still be rejected by the safety review after turning it off; choose and then click Confirm to execute.",
+        "generationSettings": "Generation settings",
+        "storyParamsByShot": "Story parameters follow the shot plan",
+        "writeAfterConfirm": "Written to nodes after confirmation",
+        "humanReviewTitle": "Input images may contain real people",
+        "humanReviewDescription": "Detected {{count}} image-to-video nodes; human review will be enabled when the model supports it, after confirmation.",
+        "humanReviewAria": "Human review",
+        "imageLabel": "Image",
+        "imageModelAria": "Image model",
+        "imageRatioAria": "Image aspect ratio",
+        "imageResolutionAria": "Image resolution",
+        "imageCountAria": "Image count",
+        "imageCountUnit": "{{count}} images",
+        "videoLabel": "Video",
+        "videoModelAria": "Video model",
+        "videoCountAria": "Video count",
+        "videoCountUnit": "{{count}} videos",
+        "shotParamsAria": "Shot parameters: {{params}}",
+        "durationUnplanned": "Duration not planned",
+        "upscaleResolutionAria": "Upscale resolution",
+        "autoCancelIn": "Auto-cancel in {{seconds}}s",
+        "videoParamsAria": "Video parameters: {{params}}",
+        "videoRatioLabel": "Ratio",
+        "videoQualityLabel": "Quality",
+        "videoDurationLabel": "Duration"
+      },
+      "directorAuto": {
+        "billingLoadFailed": "Could not load the Xia Director billing details for now",
+        "episodeAutoPaused": "Episode auto mode is paused for the following steps, waiting for your confirmation about the change",
+        "episodeAutoCompleted": "Episode {{episode}} auto production is complete",
+        "episodeAutoCompletedCurrent": "Current episode auto production is complete",
+        "episodeAutoPausedShort": "Episode auto mode is paused",
+        "episodeAutoSelected": "Episode auto mode selected; after sending the start instruction, another confirmation is still required before it runs",
+        "episodeAutoManualSwitchFailed": "Switched to manual mode, but the request to pause the backend auto task did not arrive",
+        "episodeAutoStartFailed": "Could not start episode auto: {{error}}",
+        "episodeAutoStartFailedFallback": "Backend request failed",
+        "episodeAutoStarted": "Episode auto mode started; checking current progress",
+        "turnEnded": "This conversation turn has ended; this question can no longer be submitted",
+        "skillStudioBridgeMissing": "Skill Studio bridge info is missing; please try again",
+        "skillStudioNotReady": "Skill Studio connection is not ready; please try again",
+        "submitSkillStudioFailed": "Failed to submit the Skill Studio choices. Please try again.",
+        "clarificationBridgeMissing": "Additional information bridge is missing. Please try again.",
+        "recommendedMissingParams": "The recommended settings are missing valid parameters. Please choose again or refresh and retry.",
+        "addSkillFailed": "Failed to add the Skill / Recipe: {{error}}",
+        "addSkillFailedFallback": "The backend did not confirm the save",
+        "addSkillFailedCheck": "Failed to add the Skill / Recipe. Please check the required fields and retry.",
+        "startRevisionFailed": "Failed to start the draft revision. Please try again.",
+        "taskCompleted": "✅ {{label}} is complete. You can ask me to review the result, or continue to the next step.",
+        "taskFailed": "{{label}} failed: {{error}}\nPlease fix the prerequisites from the error, then continue.",
+        "taskFailedFallback": "No specific error was provided"
+      },
+      "videoCompose": {
+        "errors": {
+          "needOneVideoTwoMedia": "Auto compose needs at least 1 video and 2 completed media nodes in total",
+          "noMaterial": "There is no usable material for video composition",
+          "overlappingClips": "The video track has overlapping clips; please adjust them on the timeline first",
+          "composeNoUrl": "Video composition finished but no finished video URL was returned",
+          "needTwoVideos": "Video composition needs at least 2 completed video inputs"
+        }
+      },
+      "directorRunMode": {
+        "modeName": "Episode Auto",
+        "directorName": "Xia Director",
+        "confirmationBody": "The user selected {{mode}} but has not completed the required second confirmation. Do not call any write, generation, or mutation tool in this turn. Reply briefly in English: state that {{mode}} will safely advance the current episode until the final composition is complete, and will pause on failure, unmet prerequisites, destructive or ambiguous actions, or choices that require the user.",
+        "confirmationVoiceInstruction": " Before starting, the user must choose a voice policy. Explicitly present both choices: '1) Missing voices are auto-matched to a system voice by Xia Director; 2) I will upload or record a custom voice in Shrimp Pond.'{{errors}} Ask the user to reply System voice or Custom voice; do not start yet.",
+        "confirmationStartInstruction": " Then ask the user to reply Continue or Confirm to start.",
+        "voiceChoiceQuestion": "Do not start episode auto and do not call generation tools. The user's voice policy is still unclear. Ask only: 'Please choose: 1) Missing voices are auto-matched to a system voice by Xia Director; 2) I will upload or record a custom voice in Shrimp Pond.' Ask them to reply System voice or Custom voice.",
+        "runModeBody": "The user enabled {{mode}} in the outer {{director}} UI. Treat this as approval to select and start the next safe mainline step without asking for per-step confirmation. Keep the one-write-per-turn limit. Before any write, inspect the current artifact and the latest task for that exact step. If the artifact is merely missing and prerequisites are ready, start its generation. Do not let an unrelated or superseded historical failed task block a missing safe step. Pause only when the latest attempt for the current required step failed or was cancelled. Stop for destructive overwrite/delete, missing voice choice, ambiguity, or unmet prerequisites. Never describe one task as failed and then silently proceed as though that same attempt succeeded. If this user-authored message may change, redo, replace, or reconfigure project output, do not perform that mutation yet. First call dramaclaw_control_episode_auto(action='suspend', reason=...) and ask the user to confirm the intended change. Questions, explanations, and progress checks do not require suspension. If the user explicitly asks to stop automatic production, call dramaclaw_control_episode_auto(action='pause'). Never cancel an already queued or running media task unless the user separately and explicitly confirms cancellation. This mode never applies Agent-credit billing. The durable auto coordinator is already running now: do not merely describe what {{mode}} will do in the future. Inspect current state, report the concrete active task or start the next safe task, and say clearly that automatic production has started.",
+        "userMessageBody": "The durable backend already owns progression of the active outer {{director}} episode auto run. First understand the user's actual intent; do not start the next mainline task merely because this message arrived. For a question, explanation, result view, or progress/status request, answer or read only and leave automatic progression running. If the message may change, redo, replace, or reconfigure project output, call dramaclaw_control_episode_auto(action='suspend', reason=...) before asking for confirmation, and do not perform the mutation in this turn. If the user explicitly asks to stop or switch to manual mode, call dramaclaw_control_episode_auto(action='pause'). Never cancel a queued or running generation task unless the user explicitly confirms cancellation of that exact task.",
+        "interventionBody": "The outer {{director}} episode auto run is suspended while waiting for the user's answer about a possible modification. Interpret the answer semantically. If the user declines/cancels the modification or asks to keep the original result and continue automatically, call dramaclaw_control_episode_auto(action='resume') and acknowledge that automatic production resumed. If the user confirms the modification, first call dramaclaw_control_episode_auto(action='pause') to leave automatic mode, then handle at most one confirmed project mutation under normal one-write-per-turn rules. If the answer is ambiguous, ask one concise follow-up and keep the run suspended. A queued or running generation task must continue by default and must not be cancelled unless the user explicitly confirms cancelling that exact task."
+      },
+      "nodeColumn": {
+        "text": "Text",
+        "image": "Image",
+        "video": "Video",
+        "audio": "Audio",
+        "reference": "Reference"
+      },
+      "canvasOperation": {
+        "expired": "Canvas operation expired",
+        "cancelled": "Canvas operation cancelled",
+        "imageGenerationFailed": "Image generation failed",
+        "videoGenerationFailed": "Video generation failed",
+        "failed": "Canvas operation failed",
+        "executionComplete": "Canvas execution complete, {{count}} applied",
+        "executionTitle": "Canvas execution",
+        "appliedCount": "{{count}} applied",
+        "collapse": "Collapse",
+        "newNode": "New node: ",
+        "nodeLabel": "Node: ",
+        "actionLabel": "Action: ",
+        "appliedOperations": "Applied {{count}} canvas operations",
+        "retry": "Retry",
+        "cancelledLabel": "Cancelled",
+        "autoCancelled": "The canvas operation timed out and was cancelled automatically"
+      },
+      "skillStudio": {
+        "parameterType": {
+          "single": "Single choice",
+          "multiple": "Multiple choice",
+          "number": "Number",
+          "boolean": "Switch",
+          "text": "Text",
+          "parameter": "Parameter"
+        },
+        "editItem": "Edit {{item}}",
+        "deleteItem": "Delete {{item}}",
+        "jsonInvalid": "Invalid JSON format. Please check and submit again.",
+        "jsonInvalidAdjust": "Invalid JSON format. Please check and adjust again.",
+        "jsonMustBeObject": "The draft must be a JSON object",
+        "draftIncompleteTitle": "Skill draft incomplete",
+        "draftTitle": "Skill / Recipe draft",
+        "editMode": "Edit",
+        "newMode": "New",
+        "incompleteNotice": "The agent submitted part of the content, but this turn has ended, so the draft cannot be saved yet.",
+        "completedSection": "Completed",
+        "missingSection": "Missing",
+        "continueHint": "After continuing the conversation, the agent can complete the missing parts based on the current draft.",
+        "noDescription": "No description",
+        "basicInfo": "Basic info",
+        "keywordPlaceholder": "Type a keyword and press Enter",
+        "optionCount": "{{count}} options",
+        "optionFallback": "Option {{n}}",
+        "defaultPrefix": "Default {{value}}",
+        "required": "Required",
+        "planningStrategy": "Planning strategy",
+        "rulePlaceholder": "Type a rule and press Enter",
+        "evaluationCriteria": "Evaluation criteria",
+        "criteriaSeparatorPlaceholder": "Separate with 、, or newlines",
+        "criteriaExample1": "e.g. 8: consistent style and accurate cultural elements",
+        "criteriaExample2": "e.g. Style consistency (0.35): does it match the visual style",
+        "criteriaExample3": "e.g. Copy impact (0.4): is the title memorable",
+        "reuseRecipes": "Reuse Recipes ({{count}})",
+        "readOnly": "Read-only",
+        "recipeNotFound": "Not found",
+        "recipeTypeFallback": "Type",
+        "recipeMissingHint": "This ID is not in the local Recipe list. Please confirm the configuration exists before saving.",
+        "unmatchedName": "No matching name",
+        "unmatchedType": "No matching type",
+        "unmatchedAction": "No matching action type",
+        "unmatchedSystemPrompt": "No matching System Prompt",
+        "unmatchedMustHave": "No matching required items",
+        "unmatchedPlanningPrompt": "No matching planner prompt",
+        "unmatchedResultSummary": "No matching output summary",
+        "outputTypeImage": "Image",
+        "outputTypeVideo": "Video",
+        "outputTypeAudio": "Audio",
+        "outputTypeText": "Text",
+        "outputTypeHtml": "HTML page",
+        "typePlaceholder": "Type a type and press Enter",
+        "elementPlaceholder": "Type an element and press Enter",
+        "viewRawJson": "View raw JSON",
+        "draftIncompleteFooter": "Draft incomplete, it will not be saved this turn",
+        "adjustWithAi": "Ask AI to adjust",
+        "confirmAdd": "Confirm add",
+        "enteringSkillStudio": "Entering Skill Studio...",
+        "draftSavedMessage": "I confirmed the add in the Skill Studio draft card. It has been saved as an official Skill / Recipe.",
+        "draftSavedSession": "Skill Studio session: {{id}}",
+        "draftSavedSkill": "Skill: {{id}}",
+        "draftSavedRecipes": "Recipes: {{ids}}",
+        "draftSavedHint": "This Skill / Recipe has been written into the Xia Director configuration and is ready to use. Please do not ask the user to save it as an official capability again.",
+        "selectTitle": "Skill Studio selection"
+      },
+      "canvasPlan": {
+        "nodeType": {
+          "node": "Node",
+          "imageNode": "Image node",
+          "videoNode": "Video node",
+          "textNode": "Text node",
+          "audioNode": "Audio node",
+          "scriptNode": "Script node"
+        },
+        "commandLabel": {
+          "createNode": "Create {{nodeType}}",
+          "addNextNode": "Add downstream {{nodeType}}",
+          "updateNodeData": "Update node parameters",
+          "deleteNodes": "Delete nodes",
+          "deleteEdges": "Disconnect",
+          "createEdge": "Create connection",
+          "layoutNodes": "Organize layout",
+          "groupNodes": "Create group",
+          "moveNodes": "Move nodes",
+          "selectNodes": "Select nodes",
+          "generateImage": "Generate image",
+          "generateVideo": "Generate video",
+          "openVideoComposeModal": "Open video composition and editing",
+          "autoComposeVideo": "Auto-compose video",
+          "openVideoViewer": "Open video",
+          "runNodeAction": "Run node action",
+          "openMainlineProjection": "Open mainline",
+          "canvasOperation": "Canvas operation"
+        },
+        "detailPrefix": {
+          "position": "Position: ",
+          "upstream": "Upstream: ",
+          "action": "Action: ",
+          "scope": "Scope: ",
+          "episode": "Episode: ",
+          "target": "Target: ",
+          "assetType": "Asset type: ",
+          "mode": "Mode: ",
+          "count": "Count: ",
+          "name": "Name: ",
+          "mainlineAssets": "Mainline assets",
+          "currentCanvas": "Current canvas",
+          "autoConnect": "Auto-connect",
+          "allNodes": "All nodes on the current canvas"
+        }
+      },
+      "billing": {
+        "title": "Xia Director Agent points reference",
+        "noteFallback": "Regular chat and canvas operations are free; only advanced Agent capabilities are billed.",
+        "headerTask": "Task",
+        "headerIncludes": "Includes",
+        "headerBilling": "Agent billing",
+        "loading": "Loading billing reference…",
+        "footnote": "The ranges are for understanding the consumption scale in advance; the final amount is based on the system's configured feature prices and the actual number of successful deliveries. Model generation costs for images, audio, and videos are not included in this table and are still settled independently by NewAPI. Tool retries and internal multi-step calls are not charged repeatedly for Agent delivery.",
+        "dialogAria": "Xia Director billing details"
+      },
+      "waitingForReply": "Waiting for your reply",
+      "backToBottom": "Back to bottom",
+      "episodeAutoRunning": "Episode Auto is running and will continue based on task status"
     },
     "workflowRecovery": {
       "safetyReviewFailed": "Some nodes did not pass safety review",
@@ -1652,6 +1968,236 @@
         "storyboard": "No unified automatic criterion yet",
         "video": "Done only when every segment's video is ready; generation in progress does not count",
         "complete": "Completion requires an actual playtest and deliverable acceptance; not automatic"
+      }
+    },
+    "agentCatalog": {
+      "ecommerce-ad": {
+        "name": "E-commerce Ad",
+        "description": "Plan ad shots dynamically from the product and its selling points; generate product anchors, ad frames, video clips, voice-over and auto-compose."
+      },
+      "japanese-anime-drama-video": {
+        "name": "Japanese Anime Drama Studio",
+        "description": "For Japanese realistic-anime-style drama shorts: youth romance, city lights, missed encounters and reunions, with high-density dialogue in Mandarin, Taiwanese Mandarin, Japanese and other languages."
+      },
+      "lego-minifigure-animation-video": {
+        "name": "LEGO Minifigure Animation Short",
+        "description": "Develop a theme, characters, scenes, conflict or reference material into a LEGO Minifigure-style animated short, in stages — script outline, shot planning, key-element anchoring and per-segment video — keeping minifigure proportions, brick-scene logic and cross-shot consistency."
+      },
+      "ling-cage-cinematic-video": {
+        "name": "Ling Cage-Style Sci-Fi Short",
+        "description": "Develop inspiration, character design, reference material or a script into a Ling Cage-style semi-realistic 3D post-apocalyptic sci-fi animated short, in stages — story script, shots, key elements, per-shot video and audio layers."
+      },
+      "outdoor-stage-duel-video": {
+        "name": "Outdoor Stage Duo Ability Show",
+        "description": "Develop character descriptions, ability types, stage scenes or climax structure into a first-person outdoor stage duo ability duel short, in stages — creative spec, shots, key elements, per-shot video and audio layers."
+      },
+      "pixar-ip-ad-video": {
+        "name": "Pixar IP Brand Ad Short",
+        "description": "Develop IP character descriptions, brand/prop design, ad plot or reference material into a Pixar 3D cartoon-style brand ad short, in stages — character locking, prop anchoring, shot planning, video generation and audio composition, keeping the character, prop, shot and video reference chain consistent."
+      },
+      "retro-hong-kong-kungfu-comedy-video": {
+        "name": "Retro Hong Kong Kung Fu Pet Comedy Short",
+        "description": "Develop a person, pet, animal reference or one line of inspiration into an 80s retro Hong Kong kung fu comedy short; first build the full workflow — script, shots, key elements, per-shot video and audio layers — then hand it to the canvas workflow to run in stages."
+      },
+      "short-drama-quick": {
+        "name": "Short Drama (Quick Test)",
+        "description": "Quickly validate the dynamic short-drama workflow: story planning, character anchors, shots, video, voice-over and auto compose."
+      },
+      "social-content-campaign": {
+        "name": "Social Content Campaign",
+        "description": "Plan social-platform copy, general visuals and per-platform images from a brand, product or campaign goal."
+      },
+      "text-to-image-video": {
+        "name": "Text to Image Video (Dynamic)",
+        "description": "Expand a text idea dynamically into multiple shots: generate key frames first, then generate video per shot and auto-compose."
+      },
+      "text-to-image": {
+        "name": "Text to Image (Dynamic)",
+        "description": "Plan and generate one or more plain images from a text brief, without video, audio or social-template stages."
+      },
+      "video-tutorial": {
+        "name": "Video Tutorial",
+        "description": "Turn knowledge points, steps or product how-tos into segmented narrated tutorial videos."
+      },
+      "ad-ip-character-anchor": {
+        "name": "Ad IP Character Anchor Portrait"
+      },
+      "ad-product-prop-anchor": {
+        "name": "Ad Product Prop Anchor Image"
+      },
+      "anthropomorphic-kungfu-key-elements": {
+        "name": "Anthropomorphic Kung Fu Key Elements"
+      },
+      "anthropomorphic-kungfu-shot-video": {
+        "name": "Anthropomorphic Kung Fu Shot Video"
+      },
+      "dialogue-continuity-shot-video": {
+        "name": "Dialogue Continuity Shot Video"
+      },
+      "dialogue-drama-story-script": {
+        "name": "Dialogue Drama Story Script"
+      },
+      "dialogue-drama-storyboard-plan": {
+        "name": "Dialogue Continuity Storyboard Plan"
+      },
+      "digital-product-ad-image": {
+        "name": "Digital Product Detail Image"
+      },
+      "digital-product-text-plan": {
+        "name": "Digital Product Detail Page Copy Plan"
+      },
+      "drama-background-music": {
+        "name": "Drama Background Music"
+      },
+      "drama-character-extraction": {
+        "name": "Drama Character Extraction"
+      },
+      "drama-character-turnaround": {
+        "name": "Drama Character Turnaround (Multi-Angle)"
+      },
+      "drama-plot-outline": {
+        "name": "Drama Plot Outline"
+      },
+      "drama-prop-extraction": {
+        "name": "Drama Prop Extraction"
+      },
+      "drama-prop-image": {
+        "name": "Drama Prop Multi-Angle Image"
+      },
+      "drama-scene-extraction": {
+        "name": "Drama Scene Extraction"
+      },
+      "drama-scene-image": {
+        "name": "Drama Scene Multi-Angle Image"
+      },
+      "drama-shot-group-detail": {
+        "name": "Drama Shot Group Detail"
+      },
+      "drama-shot-group-storyboard": {
+        "name": "Drama Shot Group Storyboard"
+      },
+      "drama-shot-planning": {
+        "name": "Drama Shot Planning"
+      },
+      "drama-shot-voice": {
+        "name": "Drama Per-Shot Voice-Over"
+      },
+      "ecommerce-ad-image": {
+        "name": "E-commerce Detail Page Image"
+      },
+      "ecommerce-remix-image": {
+        "name": "E-commerce Detail Page Remix Image"
+      },
+      "ecommerce-scene-image": {
+        "name": "E-commerce Product Scene Image"
+      },
+      "ecommerce-style-reference": {
+        "name": "E-commerce Detail Page Style Reference"
+      },
+      "ecommerce-text-plan": {
+        "name": "E-commerce Detail Page Copy Plan"
+      },
+      "four-act-comedy-story-outline": {
+        "name": "Four-Act Comedy Story Outline"
+      },
+      "general-audio": {
+        "name": "General Audio Generation"
+      },
+      "general-image": {
+        "name": "General Image Enhancement"
+      },
+      "general-text": {
+        "name": "General Text Enhancement"
+      },
+      "general-video": {
+        "name": "General Video Enhancement"
+      },
+      "keyframe-scene-script": {
+        "name": "Keyframe Scene Script"
+      },
+      "outdoor-stage-duel-audio-layers": {
+        "name": "Stage Duel Audio Layers"
+      },
+      "outdoor-stage-duel-key-elements": {
+        "name": "Stage Duel Key Elements"
+      },
+      "outdoor-stage-duel-shot-video": {
+        "name": "Stage Duel Shot Video"
+      },
+      "outdoor-stage-duel-storyboard": {
+        "name": "Stage Duel Storyboard"
+      },
+      "sci-fi-survival-audio-layers": {
+        "name": "Sci-Fi Survival BGM"
+      },
+      "sci-fi-survival-key-elements": {
+        "name": "Sci-Fi Survival Key Elements"
+      },
+      "sci-fi-survival-shot-video": {
+        "name": "Sci-Fi Survival Shot Video"
+      },
+      "sci-fi-survival-story-script": {
+        "name": "Sci-Fi Survival Story Script"
+      },
+      "sci-fi-survival-storyboard": {
+        "name": "Sci-Fi Survival Storyboard"
+      },
+      "short-film-script-outline": {
+        "name": "Short Film Script Outline"
+      },
+      "social-content-image": {
+        "name": "Social Content Image"
+      },
+      "social-copywriting": {
+        "name": "Social Viral Copy Breakdown"
+      },
+      "social-douyin-cover": {
+        "name": "Douyin / TikTok Cover"
+      },
+      "social-ig-post": {
+        "name": "Instagram Post Image"
+      },
+      "social-weibo-wechat-image": {
+        "name": "Weibo / WeChat Article Image"
+      },
+      "social-xiaohongshu-image": {
+        "name": "Xiaohongshu Cover / Image"
+      },
+      "storyboard-plan": {
+        "name": "Storyboard Plan"
+      },
+      "storyboard-shot-video": {
+        "name": "Storyboard Shot Video"
+      },
+      "video-ad-brief": {
+        "name": "Video Ad Script"
+      },
+      "video-ad-creative-outline": {
+        "name": "Video Ad Creative Outline"
+      },
+      "video-audio-layer": {
+        "name": "Video Audio Layer"
+      },
+      "video-clip-generation": {
+        "name": "Storyboard / Keyframe Video Generation"
+      },
+      "video-creative-outline": {
+        "name": "Video Creative Outline"
+      },
+      "video-frame-extraction": {
+        "name": "Video Frame Extraction"
+      },
+      "video-storyboard-grid": {
+        "name": "Video Storyboard Grid"
+      },
+      "video-storyboard-script": {
+        "name": "Video Storyboard Script"
+      },
+      "visual-key-elements": {
+        "name": "Visual Key Elements"
+      },
+      "workflow-input-analysis": {
+        "name": "Workflow Input Analysis"
       }
     }
   },
@@ -6323,6 +6869,76 @@
       "flagOff": "Off",
       "makeStory": "Make interactive story",
       "noVariablesHint": "Add a variable in 'Variables' (group header) first to set conditions / effects"
+    },
+    "command": {
+      "createNode": "Create node",
+      "addNextNode": "Add downstream node",
+      "updateNodeData": "Update node",
+      "deleteNodes": "Delete nodes",
+      "clearCanvas": "Clear canvas",
+      "deleteEdges": "Disconnect",
+      "createEdge": "Create connection",
+      "layoutNodes": "Organize layout",
+      "groupNodes": "Create group",
+      "moveNodes": "Move nodes",
+      "selectNodes": "Select nodes",
+      "openMainlineProjection": "Open mainline",
+      "runWorkflow": "Run workflow",
+      "canvasOperation": "Canvas operation",
+      "workflowAlreadyExists": "Workflow already exists, skipped duplicate creation",
+      "reuseWorkflowNode": "Reused existing workflow node",
+      "skipInvalidConnection": "Skipped invalid connection",
+      "validate": "Validate canvas commands",
+      "invalidCommand": "Canvas command invalid",
+      "runNodeAction": {
+        "translateText": "Translate text",
+        "reversePrompt": "Reverse image prompt",
+        "generateTextVideo": "Text to video",
+        "generateStoryScript": "Generate story script",
+        "openUploadPicker": "Open upload picker",
+        "generateImage": "Generate image",
+        "generateAudio": "Generate audio",
+        "openVoicePicker": "Open voice picker",
+        "generateVideo": "Generate video",
+        "runSkill": "Run skill",
+        "openVideoComposeModal": "Open video composition and editing",
+        "autoComposeVideo": "Auto-compose video",
+        "openDirectorWorld": "Open Director World",
+        "generate3gsWorld": "Generate 3GS world",
+        "openSplitStoryboardTool": "Open grid extraction",
+        "runMattingTool": "Cutout",
+        "runUpscaleTool": "Upscale",
+        "runOutpaintTool": "Outpaint",
+        "runScene360Tool": "Generate 360 panorama",
+        "runGridMultiCamera": "Generate multi-camera 3x3 grid",
+        "runGridPlotFour": "Generate story 2x2 grid",
+        "runGridFaceThreeView": "Generate face three-view",
+        "runGridProductThreeView": "Generate product three-view",
+        "runGridSerialStoryboard25": "Generate serial storyboard (25 frames)",
+        "runGridCinematicLightCorrection": "Generate cinematic light correction",
+        "runGridCharacterThreeView": "Generate character three-view",
+        "runGridSceneSettingSheet": "Generate scene setting sheet",
+        "runGridFrameProjection3sLater": "Project frame 3s later",
+        "runGridFrameProjection5sEarlier": "Project frame 5s earlier",
+        "openVideoViewer": "Open video",
+        "downloadVideo": "Download video",
+        "openVideoClipTool": "Open video clipping",
+        "openVideoUpscaleTool": "Open video upscale",
+        "runVideoAnalyzeStory": "Analyze video",
+        "runAudioSeparate": "Separate audio and video",
+        "downloadAudio": "Download audio",
+        "openVideoSubtitleEraseSmart": "Smart subtitle removal",
+        "openVideoSubtitleEraseBox": "Box subtitle removal",
+        "capturePanoCurrentView": "Capture current 360 view",
+        "capturePano2x2Views": "Capture 360 four views",
+        "capturePano4x3Views": "Capture 360 twelve views",
+        "downloadImage": "Download image",
+        "setPanoCurrentViewAsBackground": "Set as current background",
+        "resetPanoView": "Reset 360 view",
+        "syncBeatContextToMainline": "Sync shot context to mainline",
+        "openNodeAction": "Open node action"
+      },
+      "invalidCommandError": "Could not parse the canvas_chat_commands.v1 commands; check that the command field is at the correct level."
     }
   },
   "tool": {

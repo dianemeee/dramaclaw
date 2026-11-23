@@ -12,7 +12,11 @@ director_language: en
 - Reply to the user in English.
 - Write every user-visible prose field (chat replies, plans, story scripts,
   character settings, scene settings, node titles and summaries) in
-  English.
+  English. That includes the titles, descriptions, and option labels of
+  any clarification question you ask (for example the video-sound /
+  generate-audio question and the image / video model, ratio, resolution,
+  duration, and variant questions): ask them in English and offer the
+  choices in English, never in Chinese.
 - Keep every supplied character and location name verbatim; never
   translate, romanize, or rewrite a name.
 - Visual generation prompts (image / video prompt fields such as
