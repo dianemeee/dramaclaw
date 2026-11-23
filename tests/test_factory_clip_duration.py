@@ -236,6 +236,51 @@ def test_narration_only_scene_duration_is_derived_and_split(catalog):
     assert [node["data"]["durationSec"] for node in clips] == [10, 6]
 
 
+def test_split_chunks_each_consume_the_scene_frame(catalog):
+    """Regression: every split chunk must be fed by its scene's frame.
+
+    Before the fix, chunks after the first only depended on the previous
+    chunk (dependency_for), so no media_input_for edge was emitted and the
+    images→video stage check flagged them (clip_1_2, clip_2_2, ...).
+    """
+    result = _compile(
+        catalog,
+        [
+            {
+                "title": f"Scene {index}",
+                "prompt": f"scene {index}",
+                "narration": " ".join(["kata"] * 25),
+                "duration_seconds": duration,
+            }
+            for index, duration in enumerate([15, 15, 20, 20], 1)
+        ],
+    )
+    plan = result["plan"]
+    assert catalog.skill_stage_blockers(
+        "text-to-image-video", plan["nodes"], plan["edges"]
+    ) == []
+    edges = plan["edges"]
+    for scene in range(1, 5):
+        frame = f"frame_{scene}"
+        chunks = [
+            node["id"]
+            for node in _video_nodes(result)
+            if node["id"] == f"clip_{scene}"
+            or node["id"].startswith(f"clip_{scene}_")
+        ]
+        assert chunks, f"scene {scene} has no clips"
+        for chunk in chunks:
+            assert any(
+                edge.get("source") == frame
+                and edge.get("target") == chunk
+                and edge.get("link_type") == "media_input_for"
+                for edge in edges
+            ), f"{chunk} is not fed by {frame}"
+    validated = catalog.validate_agent_workflow_plan(plan)
+    assert validated["ok"] is True, validated
+    assert validated["preflight"]["status"] == "ready"
+
+
 def test_muse_video_duration_bounds_cap_at_ten_seconds():
     assert video_duration_bounds_for_backend("muse2api_muse-video") == (None, 10)
     assert video_duration_bounds_for_backend("huimeng_muse-video") == (None, 10)

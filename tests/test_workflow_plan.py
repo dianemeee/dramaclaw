@@ -1125,6 +1125,115 @@ def test_agent_authored_plan_backfills_runtime_fields_from_skill_inputs(monkeypa
     assert validated["preflight"]["planned_video_duration_seconds"] == 3 + 6 * (len(filled) - 1)
 
 
+def test_agent_plan_node_type_defaults_from_recipe_id(monkeypatch):
+    """A node with node_type null is defaulted from its Recipe instead of failing.
+
+    Agent-authored plans routinely omit node_type; the compiler already
+    derives it from the Recipe, so validation must agree.
+    """
+    catalog = _load_catalog_module()
+    _install_real_builtin_catalog(monkeypatch, catalog)
+    plan = _raw_plan_from_standard(
+        catalog, {"skill_id": "text-to-image-video", "user_goal": "生成一段赛博城市文生图生视频"}
+    )
+    video_nodes = [node for node in plan["nodes"] if node["node_type"] == "videoNode"]
+    assert video_nodes
+    for node in video_nodes:
+        node["node_type"] = None
+
+    validated = catalog.validate_agent_workflow_plan(plan)
+
+    assert validated["ok"] is True, validated
+    assert all(
+        node["node_type"] == "videoNode"
+        for node in validated["plan"]["nodes"]
+        if node["data"].get("workflowCatalog", {}).get("recipeId") == "general-video"
+    )
+
+
+def test_agent_plan_compose_clip_without_duration_validates(monkeypatch):
+    """A compose clip that omits durationMs is treated as null, not rejected."""
+    catalog = _load_catalog_module()
+    _install_real_builtin_catalog(monkeypatch, catalog)
+    plan = _raw_plan_from_standard(
+        catalog, {"skill_id": "text-to-image-video", "user_goal": "生成一段赛博城市文生图生视频"}
+    )
+    compose = next(
+        node for node in plan["nodes"] if node["node_type"] == "videoComposeNode"
+    )
+    compose["data"]["draftTimeline"] = {
+        "resolution": "720p",
+        "tracks": [
+            {
+                "id": "track-video",
+                "kind": "video",
+                "clips": [
+                    {
+                        "id": f"clip-{index}",
+                        "nodeId": node["id"],
+                        "kind": "video",
+                        "sourceUrl": "",
+                        "displayName": None,
+                        "thumbUrl": None,
+                        "timelineStartMs": index * 5000,
+                        "trimStartMs": 0,
+                        "trimEndMs": 5000,
+                        "volume": 1,
+                        "muted": False,
+                        "speed": 1,
+                    }
+                    for index, node in enumerate(
+                        node
+                        for node in plan["nodes"]
+                        if node["node_type"] == "videoNode"
+                    )
+                ]
+            }
+        ]
+    }
+
+    validated = catalog.validate_agent_workflow_plan(plan)
+
+    assert validated["ok"] is True, validated
+    clips = validated["plan"]["nodes"][
+        [node["node_type"] for node in validated["plan"]["nodes"]].index(
+            "videoComposeNode"
+        )
+    ]["data"]["draftTimeline"]["tracks"][0]["clips"]
+    assert all(clip["durationMs"] is None for clip in clips)
+
+
+def test_agent_plan_link_type_normalized_to_compiler_inference(monkeypatch):
+    """A wrong-but-known link type is normalized to what the compiler infers.
+
+    The live failure was context_for on an image→video edge; the compiler
+    infers media_input_for for that pair, so validation must accept it
+    instead of rejecting the plan.
+    """
+    catalog = _load_catalog_module()
+    _install_real_builtin_catalog(monkeypatch, catalog)
+    plan = _raw_plan_from_standard(
+        catalog, {"skill_id": "text-to-image-video", "user_goal": "生成一段赛博城市文生图生视频"}
+    )
+    edge = next(
+        edge
+        for edge in plan["edges"]
+        if edge.get("source") == "frame_1" and edge.get("target") == "clip_1"
+    )
+    assert edge["link_type"] == "media_input_for"
+    edge["link_type"] = "context_for"
+
+    validated = catalog.validate_agent_workflow_plan(plan)
+
+    assert validated["ok"] is True, validated
+    normalized = next(
+        edge
+        for edge in validated["plan"]["edges"]
+        if edge.get("source") == "frame_1" and edge.get("target") == "clip_1"
+    )
+    assert normalized["link_type"] == "media_input_for"
+
+
 def test_agent_authored_per_shot_duration_alias_cannot_be_masked_by_global_default(monkeypatch):
     """A noncanonical per-shot 7 s value must not become a ready 8 s runtime shot."""
     catalog = _load_catalog_module()
@@ -4193,6 +4302,24 @@ def test_workflow_plan_rejects_large_text_split_across_small_fields():
     assert any(
         issue["path"] == "$" and "aggregate workflow planning text" in issue["message"]
         for issue in result["errors"]
+    )
+
+
+def test_workflow_plan_prompt_text_excluded_from_planning_text_aggregate():
+    """Long scene prompts alone must not trip the planning-text aggregate.
+
+    A plan whose text is mostly prompts (long scene prompts, per-clip
+    narration) is not a planning-text abuse; only the small planning fields
+    count toward the 4000-character aggregate.
+    """
+    plan = _dynamic_plan(image_count=3)
+    plan["nodes"][0]["data"].update({"prompt": "甲" * 5_000})
+
+    result = validate_workflow_plan(plan)
+
+    assert not any(
+        issue["path"] == "$" and "aggregate workflow planning text" in issue["message"]
+        for issue in result.get("errors", [])
     )
 
 

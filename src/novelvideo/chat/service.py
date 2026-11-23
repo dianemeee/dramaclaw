@@ -308,7 +308,7 @@ _CODEX_FREEZONE_DEVELOPER_INSTRUCTIONS = (
     "belong in the compact Intent or standard planner inputs and must not by themselves trigger an "
     "agent-authored Plan. Use a complete WorkflowPlan only when the user explicitly enumerates "
     "canvas nodes and a dependency graph that deviates from the selected Skill's standard topology; "
-    "then copy exact user node totals into expected_node_count and expected_node_counts. Every "
+    "then copy exact user node totals into expected_node_counts. Every "
     "complete Plan must carry "
     "top-level schema_version plus skill.id and skill.version copied from the selected production "
     "Skill; use text-to-image for a pure image workflow and text-to-image-video only "
@@ -861,7 +861,7 @@ Canvas write contract:
   which identify recipe-less user resources. Beat counts, shot counts, episode counts, and other
   business totals stay in compact Intent or standard-planner inputs and do not by themselves require
   a raw Plan. Only explicit canvas nodes plus a nonstandard dependency graph take the exact-topology
-  path; on that path, copy exact node totals into expected_node_count and expected_node_counts and
+  path; on that path, copy exact node totals into expected_node_counts and
   keep them unchanged during recovery. Episodic short-drama, Beat,
   voice-over, or background-music workflows should use the short-drama production Skill rather than
   the generic text-to-image-video Skill. A pure image workflow must use text-to-image; use

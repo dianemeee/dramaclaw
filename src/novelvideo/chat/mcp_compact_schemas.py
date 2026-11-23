@@ -14,7 +14,6 @@ _PLAN = {
             "assumptions",
             "execution_policy",
             "expansion_rules",
-            "expected_node_count",
             "inputs",
             "missing_inputs",
             "mode",

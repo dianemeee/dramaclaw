@@ -41,6 +41,13 @@ except Exception:  # pragma: no cover - Hermes can run before app imports are av
     ALLOWED_NODE_TYPES = set()
     _IGNORED_VIDEO_DURATION_KEYS = ()
 
+try:
+    from novelvideo.freezone.agent_workflows.graph import (
+        _infer_link_type as _compiler_infer_link_type,
+    )
+except Exception:  # pragma: no cover - Hermes can run before app imports are available.
+    _compiler_infer_link_type = None
+
 _REQUEST_CATALOG: ContextVar[dict[str, list[dict[str, Any]]] | None] = ContextVar(
     "workflow_request_catalog", default=None
 )
@@ -2534,7 +2541,12 @@ def _standard_skill_items(
                 # the duration parameter, and its share of the narration.
                 # Later chunks depend on the previous chunk, so each one
                 # continues from the last frame of the one before it; the
-                # compose step sequences every chunk in plan order.
+                # compose step sequences every chunk in plan order. Every
+                # chunk also references the scene's first-frame image, so
+                # each one consumes it (media_input_for): a chunk that only
+                # depends on the previous chunk is flagged by the
+                # images→video stage check, because dependency_for only
+                # orders execution and never feeds the target.
                 chunk_seconds = _clip_durations_for_scene(
                     _scene_clip_seconds(unit)
                 )
@@ -2571,6 +2583,13 @@ def _standard_skill_items(
                                 video_dependencies
                                 if chunk_index == 0
                                 else [previous_chunk_id]
+                            ),
+                            # Chunk 0 already consumes the frame through
+                            # depends_on; later chunks only order after the
+                            # previous chunk, so give them the frame as an
+                            # explicit reference input (media_input_for).
+                            reference_inputs=(
+                                [video_source_id] if chunk_index > 0 else None
                             ),
                             stage="video",
                             timeline_role="visual",
@@ -4912,6 +4931,79 @@ def _quick_drama_visual_style_blockers(
     return blockers
 
 
+def _normalize_agent_plan_for_validation(
+    plan: Any, recipes: dict[str, dict[str, Any]]
+) -> Any:
+    """Default what the strict plan validator needs the compiler to infer.
+
+    Agent-authored plans routinely omit three things the deterministic
+    compiler derives on its own: a node's ``node_type`` (derivable from its
+    Recipe), a compose clip's ``durationMs`` (unknown until generation, so
+    ``null``), and the exact link type for an edge (the compiler infers it
+    from the endpoint node types). Normalizing them here — before strict
+    validation — makes validation and compilation agree instead of rejecting
+    a plan the compiler would have accepted. The caller's plan is not
+    mutated; a normalized copy is returned.
+    """
+    if not isinstance(plan, dict):
+        return plan
+    normalized = deepcopy(plan)
+    nodes = normalized.get("nodes")
+    node_types: dict[str, str] = {}
+    if isinstance(nodes, list):
+        for node in nodes:
+            if not isinstance(node, dict):
+                continue
+            node_id = _text(node.get("id"))
+            node_type = _text(node.get("node_type") or node.get("type"))
+            if not node_type:
+                data = node.get("data") if isinstance(node.get("data"), dict) else {}
+                catalog = (
+                    data.get("workflowCatalog")
+                    if isinstance(data.get("workflowCatalog"), dict)
+                    else {}
+                )
+                recipe = recipes.get(_text(catalog.get("recipeId")))
+                if recipe is not None:
+                    node_type = _text(_recipe_node_type(recipe) or "")
+            if node_type and not _text(node.get("node_type")):
+                node["node_type"] = node_type
+            if node_id and node_type:
+                node_types[node_id] = node_type
+            # A compose clip's duration is unknown until generation; the
+            # timeline schema requires the key with a null value, so fill
+            # it instead of failing a plan that simply omits it.
+            data = node.get("data") if isinstance(node.get("data"), dict) else {}
+            timeline = data.get("draftTimeline")
+            if not isinstance(timeline, dict):
+                continue
+            for track in timeline.get("tracks") or []:
+                if not isinstance(track, dict):
+                    continue
+                for clip in track.get("clips") or []:
+                    if isinstance(clip, dict) and "durationMs" not in clip:
+                        clip["durationMs"] = None
+    if _compiler_infer_link_type is not None:
+        edges = normalized.get("edges")
+        if isinstance(edges, list):
+            for edge in edges:
+                if not isinstance(edge, dict):
+                    continue
+                source = _text(edge.get("source"))
+                target = _text(edge.get("target"))
+                source_type = node_types.get(source, "")
+                target_type = node_types.get(target, "")
+                if not source_type or not target_type:
+                    continue
+                requested = _text(edge.get("link_type"))
+                inferred = _compiler_infer_link_type(
+                    source_type, target_type, requested or None
+                )
+                if inferred and inferred != requested:
+                    edge["link_type"] = inferred
+    return normalized
+
+
 def validate_agent_workflow_plan(
     plan: Any,
     *,
@@ -4960,6 +5052,7 @@ def validate_agent_workflow_plan(
         for recipe in recipe_items
         if _text(recipe.get("id")) and recipe.get("enabled") is not False
     }
+    plan = _normalize_agent_plan_for_validation(plan, recipes)
     validated = validate_workflow_plan(
         plan,
         skills_by_id=skills,

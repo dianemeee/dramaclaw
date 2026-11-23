@@ -26,7 +26,9 @@ PLANNING_TEXT_FIELD_NAMES = frozenset(
         "content",
         "description",
         "instruction",
-        "prompt",
+        # "prompt" is deliberately excluded: a plan whose text is mostly
+        # long scene prompts and per-clip narration is not a planning-text
+        # abuse, and the compiler already handles that text.
         "text",
         "user_goal",
     }

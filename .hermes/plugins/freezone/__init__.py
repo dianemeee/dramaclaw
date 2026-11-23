@@ -7675,6 +7675,21 @@ def _load_skill_studio_session(
     return draft
 
 
+def _resolve_workflow_skill_version(skill_id: str) -> str:
+    """Resolve a Skill's current version from its loaded package."""
+    if get_workflow_skill is None:
+        return ""
+    try:
+        package = get_workflow_skill({"skill_id": skill_id, "compact": True})
+    except Exception:
+        return ""
+    if not isinstance(package, dict) or not package.get("ok", True):
+        return ""
+    skill = package.get("skill")
+    version = skill.get("version") if isinstance(skill, dict) else None
+    return str(version) if version is not None and str(version) else ""
+
+
 def _handle_begin_agent_product_generation(args: dict[str, Any], **_: Any) -> str:
     project_id, canvas_id, scope_error = _workflow_draft_scope(args)
     if scope_error:
@@ -7685,6 +7700,11 @@ def _handle_begin_agent_product_generation(args: dict[str, Any], **_: Any) -> st
     skill_id = str(args.get("skill_id") or "").strip()
     skill_version = str(args.get("skill_version") or "").strip()
     artifact_id = str(args.get("artifact_id") or "").strip()
+    if product_kind == "workflow_result" and skill_id and not skill_version:
+        # A missing skill_version is resolved server-side from the selected
+        # Skill package's current version; only an explicit mismatch (or an
+        # unknown Skill) still fails below.
+        skill_version = _resolve_workflow_skill_version(skill_id)
     if product_kind == "workflow_result":
         missing_identity = [
             field
@@ -14314,11 +14334,15 @@ TOOLS = (
                 },
                 "skill_version": {
                     "type": "string",
-                    "description": "Required when product_kind is workflow_result.",
+                    "description": (
+                        "Optional when product_kind is workflow_result; when "
+                        "omitted it is resolved from the selected Skill's "
+                        "current version. A supplied value must match exactly."
+                    ),
                 },
                 "normalized_inputs": {"type": "object"},
             },
-            ["product_kind", "generation_session_id", "normalized_inputs"],
+            ["product_kind", "generation_session_id"],
             reject_unknown=True,
         ),
         _handle_begin_agent_product_generation,

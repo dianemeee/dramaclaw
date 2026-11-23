@@ -804,6 +804,82 @@ def test_workflow_result_admission_derives_versioned_skill_artifact_id(monkeypat
     assert requests[0]["artifact_id"] == "private-html-smoke-test@3"
 
 
+def test_workflow_result_admission_resolves_missing_skill_version(monkeypatch):
+    plugin = _load_plugin_module()
+    monkeypatch.setattr(plugin, "_workflow_draft_scope", lambda args: ("p", "c", None))
+    monkeypatch.setattr(
+        plugin,
+        "get_workflow_skill",
+        lambda args: {
+            "ok": True,
+            "skill": {"id": "private-html-smoke-test", "version": 3},
+        },
+    )
+    requests = []
+
+    def request(method, path, *, body):
+        requests.append(body)
+        return {
+            "ok": True,
+            "data": {
+                "operation_id": "op-1",
+                "product_kind": "workflow_result",
+                "task_id": "task-1",
+                "generation_session_id": "session-1",
+            },
+        }
+
+    monkeypatch.setattr(plugin, "_request", request)
+
+    result = plugin._handle_begin_agent_product_generation(
+        {
+            "product_kind": "workflow_result",
+            "generation_session_id": "session-1",
+            "normalized_inputs": {"prompt": "example"},
+            "skill_id": "private-html-smoke-test",
+        }
+    )
+
+    assert result["ok"] is True
+    assert requests[0]["artifact_id"] == "private-html-smoke-test@3"
+
+
+def test_workflow_result_admission_still_requires_identity_for_unknown_skill(
+    monkeypatch,
+):
+    plugin = _load_plugin_module()
+    monkeypatch.setattr(plugin, "_workflow_draft_scope", lambda args: ("p", "c", None))
+    monkeypatch.setattr(
+        plugin,
+        "get_workflow_skill",
+        lambda args: {
+            "ok": False,
+            "status": "workflow_skill_not_found",
+            "error": "workflow skill not found: nope",
+        },
+    )
+    monkeypatch.setattr(
+        plugin,
+        "_request",
+        lambda *_args, **_kwargs: pytest.fail(
+            "an unknown Skill must not be admitted"
+        ),
+    )
+
+    result = plugin._handle_begin_agent_product_generation(
+        {
+            "product_kind": "workflow_result",
+            "generation_session_id": "session-1",
+            "normalized_inputs": {"prompt": "example"},
+            "skill_id": "nope",
+        }
+    )
+
+    assert result["ok"] is False
+    assert result["status"] == "workflow_result_skill_identity_required"
+    assert result["missing_fields"] == ["skill_version"]
+
+
 def test_workflow_result_admission_rejects_mismatched_skill_artifact_id(monkeypatch):
     plugin = _load_plugin_module()
     monkeypatch.setattr(plugin, "_workflow_draft_scope", lambda args: ("p", "c", None))
