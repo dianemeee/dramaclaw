@@ -9,6 +9,7 @@ import {
 } from '../domain/fmvContinuity';
 import { getOrCaptureVideoFrame } from './videoCaptureFrame';
 import { videoReferenceEnvelopeForNode } from './videoReferenceEnvelope';
+import { isMuse2ApiDirectVideoModel } from '../nodes/shared/videoModelCapabilities';
 import {
   orderedStoryImages,
   syncStoryVideoReferencePrompt as syncStoryVideoReferencePromptIn,
@@ -50,7 +51,14 @@ export async function ensureVideoContinuity(targetId: string, projectId?: string
   const target = state.nodes.find((node) => node.id === targetId);
   if (!target || !isFmvVideoNode(target, state.edges)) return;
   if (target.data.continuityMode !== 'auto' && target.data.continuityMode !== 'independent') return;
-  if (target.data.continuityMode === 'independent') {
+  // The direct muse2api model takes a single first-frame image only, so it
+  // gets the same treatment as an independent opening: drop any auto-managed
+  // tail-frame references and strip the continuity note instead of attaching
+  // the previous shot's tail frame. Attaching it would make the run refuse
+  // itself ("The model cannot consume these references") — the run re-adds
+  // the reference at submit time, so neither detaching it in the panel nor
+  // deleting its canvas edge survives a regenerate.
+  if (target.data.continuityMode === 'independent' || isMuse2ApiDirectVideoModel(target.data.model)) {
     for (const edge of state.edges.filter((edge) => edge.target === targetId && isWorkflowContinuityTailFrameEdge(edge))) {
       state.deleteEdge(edge.id);
     }

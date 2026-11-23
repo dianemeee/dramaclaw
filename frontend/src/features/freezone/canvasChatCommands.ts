@@ -75,6 +75,8 @@ import {
   ensureVideoContinuity,
   isFmvVideoNode,
 } from "@/features/canvas/application/videoContinuity";
+import { isWorkflowContinuityTailFrameEdge } from "@/features/canvas/domain/fmvContinuity";
+import { isMuse2ApiDirectVideoModel } from "@/features/canvas/nodes/shared/videoModelCapabilities";
 import { syncCompletedStoryFramesIn } from "@/features/canvas/core/storyAttachment";
 import { videoReferenceEnvelopeForNode } from "@/features/canvas/application/videoReferenceEnvelope";
 
@@ -663,6 +665,17 @@ async function ensureVideoContinuityTailFrames(
   const target = nodeById(action.nodeId);
   if (!target || target.type !== CANVAS_NODE_TYPES.video) return;
   const state = useCanvasStore.getState();
+  // The direct muse2api model takes a single first-frame image only: attaching
+  // the previous shot's tail frame makes the run refuse itself ("The model
+  // cannot consume these references"). Skip the attachment and drop any stale
+  // auto-managed tail-frame edge left by an earlier run on another model, so
+  // the node runs with its first frame only.
+  if (isMuse2ApiDirectVideoModel(target.data.model)) {
+    for (const edge of state.edges.filter((edge) => edge.target === action.nodeId && isWorkflowContinuityTailFrameEdge(edge))) {
+      state.deleteEdge(edge.id);
+    }
+    return;
+  }
   const sourceVideos = state.edges
     .filter((edge) =>
       edge.target === action.nodeId &&

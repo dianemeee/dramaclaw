@@ -13,6 +13,7 @@ import {
   GEN_MODE_TO_CATALOG_MODE,
   isGrokVideoChannelModel,
   isHappyHorseVideoModel,
+  isMuse2ApiDirectVideoModel,
   isSeedance1xVideoModel,
   isSeedance25VideoModel,
   isSeedance2VideoModel,
@@ -133,6 +134,17 @@ describe("video model family detection", () => {
     }
     // 分隔符不敏感：normalize 后 `seedance20` 仍是 2.0，不会漏成 1.x。
     expect(isSeedance2VideoModel("SEEDANCE 2.0 FAST")).toBe(true);
+  });
+
+  it("singles out the direct muse2api model without catching the gateway row", () => {
+    // Catalog id / apiModel of the CE bypass entry ("Muse Video (direct)").
+    expect(isMuse2ApiDirectVideoModel("muse2api_muse-video")).toBe(true);
+    expect(isMuse2ApiDirectVideoModel("MUSE2API_MUSE-VIDEO")).toBe(true);
+    // The gateway row (newapi_muse-video / muse-video) must keep the
+    // previous-shot tail frame — it is a different backend.
+    for (const id of ["muse-video", "newapi_muse-video", SEEDANCE2_FAST, HAPPYHORSE, null, undefined, ""]) {
+      expect(isMuse2ApiDirectVideoModel(id)).toBe(false);
+    }
   });
 
   it("singles out Seedance 2.5 without unsettling the 2.x family verdict", () => {

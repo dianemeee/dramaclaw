@@ -7667,6 +7667,113 @@ describe("canvas chat commands", () => {
     expect(useCanvasStore.getState().nodes.find((node) => node.id === targets[0])?.data.prompt).toBe("继续动作");
   });
 
+  it("does not attach a continuity tail frame for the direct muse2api model", async () => {
+    const store = useCanvasStore.getState();
+    const source = store.addNode(CANVAS_NODE_TYPES.video, { x: 0, y: 0 }, {
+      videoUrl: "/static/project/one.mp4", durationMs: 8000,
+    });
+    const target = store.addNode(CANVAS_NODE_TYPES.video, { x: 400, y: 0 }, {
+      continuityMode: "auto", genMode: "allReference", prompt: "继续动作",
+      model: "muse2api_muse-video",
+    });
+    useCanvasStore.setState({ edges: [{ id: "choice", source, target, type: "storyChoiceEdge" }] });
+    await ensureVideoContinuity(target, "project-a");
+    expect(captureVideoFrameBlob).not.toHaveBeenCalled();
+    expect(useCanvasStore.getState().edges.some((edge) => edge.target === target && edge.data?.edgeKind === "workflow_continuity_tail_frame")).toBe(false);
+    expect(useCanvasStore.getState().nodes.find((node) => node.id === target)?.data.prompt).toBe("继续动作");
+  });
+
+  it("still attaches a continuity tail frame for the gateway muse-video model", async () => {
+    const store = useCanvasStore.getState();
+    const source = store.addNode(CANVAS_NODE_TYPES.video, { x: 0, y: 0 }, {
+      videoUrl: "/static/project/one.mp4", durationMs: 8000,
+    });
+    const target = store.addNode(CANVAS_NODE_TYPES.video, { x: 400, y: 0 }, {
+      continuityMode: "auto", genMode: "allReference", prompt: "继续动作",
+      model: "muse-video",
+    });
+    useCanvasStore.setState({ edges: [{ id: "choice", source, target, type: "storyChoiceEdge" }] });
+    await ensureVideoContinuity(target, "project-a");
+    expect(captureVideoFrameBlob).toHaveBeenCalledTimes(1);
+    expect(useCanvasStore.getState().edges).toContainEqual(expect.objectContaining({
+      target, data: expect.objectContaining({ edgeKind: "workflow_continuity_tail_frame" }),
+    }));
+    expect(useCanvasStore.getState().nodes.find((node) => node.id === target)?.data.prompt).toContain("[FMV自动承接]");
+  });
+
+  it("drops a stale continuity tail frame when the model switches to direct muse2api", async () => {
+    const store = useCanvasStore.getState();
+    const source = store.addNode(CANVAS_NODE_TYPES.video, { x: 0, y: 0 }, {
+      videoUrl: "/static/project/one.mp4", durationMs: 8000,
+    });
+    const target = store.addNode(CANVAS_NODE_TYPES.video, { x: 400, y: 0 }, {
+      continuityMode: "auto", genMode: "allReference", prompt: "继续动作",
+      model: "muse-video",
+    });
+    useCanvasStore.setState({ edges: [{ id: "choice", source, target, type: "storyChoiceEdge" }] });
+    await ensureVideoContinuity(target, "project-a");
+    expect(useCanvasStore.getState().edges.some((edge) => edge.target === target && edge.data?.edgeKind === "workflow_continuity_tail_frame")).toBe(true);
+    // Switching the same node to the direct model must clean up the
+    // auto-managed tail frame instead of re-attaching it on the next run.
+    store.updateNodeData(target, { model: "muse2api_muse-video" });
+    await ensureVideoContinuity(target, "project-a");
+    expect(captureVideoFrameBlob).toHaveBeenCalledTimes(1);
+    expect(useCanvasStore.getState().edges.some((edge) => edge.target === target && edge.data?.edgeKind === "workflow_continuity_tail_frame")).toBe(false);
+    expect(useCanvasStore.getState().nodes.find((node) => node.id === target)?.data.prompt).toBe("继续动作");
+  });
+
+  it("does not attach a continuity tail frame for the direct muse2api model on workflow runs", async () => {
+    const store = useCanvasStore.getState();
+    const source = store.addNode(CANVAS_NODE_TYPES.video, { x: 0, y: 0 }, {
+      videoUrl: "/static/project/one.mp4", durationMs: 8000,
+    });
+    const target = store.addNode(CANVAS_NODE_TYPES.video, { x: 400, y: 0 }, {
+      genMode: "allReference", prompt: "继续动作", model: "muse2api_muse-video",
+    });
+    useCanvasStore.setState({ edges: [{ id: "dep", source, target, data: { link_type: "dependency_for" } }] });
+    const unsubscribe = canvasEventBus.subscribe("freezone/run-node-action", (event) => {
+      useCanvasStore.getState().updateNodeData(event.nodeId, { videoUrl: `/static/project/${event.nodeId}.mp4` });
+      canvasEventBus.publish("freezone/node-action-result", {
+        requestId: event.requestId!, nodeId: event.nodeId, action: event.action, status: "success",
+      });
+    });
+    try {
+      const result = await applyCanvasChatCommandsAsync([{
+        schema_version: CANVAS_CHAT_COMMANDS_SCHEMA_VERSION,
+        commands: [{ type: "run_node_action", node_id: target, action: "generate_video" }],
+      }], { projectId: "project-a" });
+      expect(result.errors).toEqual([]);
+      expect(captureVideoFrameBlob).not.toHaveBeenCalled();
+      expect(useCanvasStore.getState().edges.some((edge) => edge.target === target && edge.data?.edgeKind === "workflow_continuity_tail_frame")).toBe(false);
+    } finally { unsubscribe(); }
+  });
+
+  it("still attaches a continuity tail frame for the gateway model on workflow runs", async () => {
+    const store = useCanvasStore.getState();
+    const source = store.addNode(CANVAS_NODE_TYPES.video, { x: 0, y: 0 }, {
+      videoUrl: "/static/project/one.mp4", durationMs: 8000,
+    });
+    const target = store.addNode(CANVAS_NODE_TYPES.video, { x: 400, y: 0 }, {
+      genMode: "allReference", prompt: "继续动作", model: "muse-video",
+    });
+    useCanvasStore.setState({ edges: [{ id: "dep", source, target, data: { link_type: "dependency_for" } }] });
+    const unsubscribe = canvasEventBus.subscribe("freezone/run-node-action", (event) => {
+      useCanvasStore.getState().updateNodeData(event.nodeId, { videoUrl: `/static/project/${event.nodeId}.mp4` });
+      canvasEventBus.publish("freezone/node-action-result", {
+        requestId: event.requestId!, nodeId: event.nodeId, action: event.action, status: "success",
+      });
+    });
+    try {
+      const result = await applyCanvasChatCommandsAsync([{
+        schema_version: CANVAS_CHAT_COMMANDS_SCHEMA_VERSION,
+        commands: [{ type: "run_node_action", node_id: target, action: "generate_video" }],
+      }], { projectId: "project-a" });
+      expect(result.errors).toEqual([]);
+      expect(captureVideoFrameBlob).toHaveBeenCalledTimes(1);
+      expect(useCanvasStore.getState().edges.some((edge) => edge.target === target && edge.data?.edgeKind === "workflow_continuity_tail_frame")).toBe(true);
+    } finally { unsubscribe(); }
+  });
+
   it("does not infer continuity from playback alone and rejects ambiguous or unfinished predecessors", async () => {
     const store = useCanvasStore.getState();
     const a = store.addNode(CANVAS_NODE_TYPES.video, { x: 0, y: 0 }, {});

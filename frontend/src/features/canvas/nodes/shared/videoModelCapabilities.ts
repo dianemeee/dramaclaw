@@ -35,6 +35,19 @@ export function isGrokVideoChannelModel(modelId: string | null | undefined): boo
   return normalizeVideoModelId(modelId).includes("grokvideochannel");
 }
 
+/**
+ * Direct muse2api video model (the CE bypass entry, catalog id / apiModel
+ * `muse2api_muse-video`, picker label "Muse Video (direct)"). It takes a
+ * single first-frame image only: muse2api has no keyframe / first-last-frame
+ * mode, and the frontend refuses any run carrying a second image reference
+ * ("The model cannot consume these references"). Unlike the gateway
+ * `muse-video` row, it must never receive the auto-attached previous-shot
+ * tail frame — the run would attach the frame and then refuse itself.
+ */
+export function isMuse2ApiDirectVideoModel(modelId: string | null | undefined): boolean {
+  return normalizeVideoModelId(modelId) === "muse2apimusevideo";
+}
+
 // Seedance 1 全系列（1.0 Pro Fast / 1.5 Pro / …）：版本号 `1.x` → `1x`，匹配
 // `seedance1` 后跟任意数字，避免误命中 2.0（`seedance20`）。引用素材时这些模型受限。
 export function isSeedance1xVideoModel(modelId: string | null | undefined): boolean {
