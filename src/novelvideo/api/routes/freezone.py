@@ -9747,6 +9747,52 @@ def _start_freezone_image_reverse_prompt_task(
 # ============================================================
 
 
+def _with_muse2api_direct_video_entry(
+    catalog: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Append a direct-muse2api entry derived from the configured muse-video row.
+
+    The CE video catalog is built from the NewAPI model mappings, and its video
+    ``apiModel`` is always derived as ``"newapi_" + mapping key`` — so the
+    configured muse-video row can only ever resolve to the ``newapi_muse-video``
+    backend (``NewApiVideoGenerator``, via the gateway). The direct bypass
+    backend ``muse2api_muse-video`` therefore needs its own catalog entry with
+    an explicit apiModel. It inherits the row's request schema and supported
+    modes, so request validation and the mode gate keep working unchanged.
+
+    The source row is matched by its mapping key (catalogId), never by
+    gatewayModel: the row's upstream model is managed separately and must not
+    decide whether the direct entry exists. The direct entry's gatewayModel is
+    set explicitly to the muse2api model name.
+    """
+    source = next(
+        (item for item in catalog if _catalog_entry_id(item) == "muse-video"),
+        None,
+    )
+    if source is None:
+        return catalog
+    if any(
+        str(item.get("apiModel") or "") == "muse2api_muse-video"
+        for item in catalog
+    ):
+        return catalog
+    direct = {
+        **source,
+        "catalogId": "muse2api_muse-video",
+        "catalog_id": "muse2api_muse-video",
+        "id": "muse2api_muse-video",
+        "providerId": "muse2api",
+        "provider": "muse2api",
+        "apiModel": "muse2api_muse-video",
+        "api_model": "muse2api_muse-video",
+        "gatewayModel": "muse-video",
+        "gateway_model": "muse-video",
+        "aliases": [],
+        "label": "Muse Video (direct)",
+    }
+    return [*catalog, direct]
+
+
 async def _ee_media_model_catalog(media_type: str) -> list[dict[str, Any]] | None:
     """Use EE catalog or the CE-local catalog when custom NewAPI is active."""
     from novelvideo.ports.registry import PortNotRegistered, get_port
@@ -9766,10 +9812,13 @@ async def _ee_media_model_catalog(media_type: str) -> list[dict[str, Any]] | Non
         if is_ce_effective():
             mode = get_effective_newapi_config().mode
             if mode == MODE_CUSTOM:
-                return _merge_media_model_catalog_defaults(
+                merged = _merge_media_model_catalog_defaults(
                     _static_media_model_catalog(media_type),
                     get_ce_media_model_catalog(media_type, include_disabled=True),
                 )
+                if media_type == "video":
+                    merged = _with_muse2api_direct_video_entry(merged)
+                return merged
             if mode == MODE_HYBRID:
                 local = get_ce_media_model_catalog(
                     media_type,
