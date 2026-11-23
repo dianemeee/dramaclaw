@@ -1560,7 +1560,10 @@ class Muse2ApiVideoGenerator(VideoGeneratorBase):
         last_frame_path: Optional[str] = None,
         **kwargs,
     ) -> VideoGenResult:
-        _deny_direct_organization_video(kwargs)
+        # CE exemption (same justification as create_video_generator): the
+        # direct muse2api branch authenticates only with the local owner's
+        # own MUSE2API_KEY, so the organization-egress gate does not apply
+        # to this generator. The other direct generators keep the gate.
 
         def log(msg: str):
             if on_log:
@@ -5230,8 +5233,13 @@ def create_video_generator(
 
     muse2api_model = parse_muse2api_video_backend(backend_str)
     if muse2api_model:
-        if _direct_video_context_denied(egress_context):
-            raise VideoEgressError("ORG_EGRESS_DENIED")
+        # CE exemption: the direct muse2api branch authenticates only with
+        # the local owner's own MUSE2API_KEY from the environment — there is
+        # no platform credential for organization traffic to borrow, and CE
+        # gateway billing is internal/fictional — so the organization-egress
+        # gate (which exists to stop org traffic billing the platform) must
+        # not deny the local owner here. The huimeng/seedance direct
+        # branches keep the gate.
         kwargs.pop("egress_context", None)
         return Muse2ApiVideoGenerator(model=muse2api_model, **kwargs)
 

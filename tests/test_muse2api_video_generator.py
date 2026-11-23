@@ -320,3 +320,132 @@ async def test_download_bearer_only_for_muse2api_host(
 
     assert seen[0]["headers"] == {"Authorization": "Bearer test-muse2api-key"}
     assert seen[1]["headers"] is None
+
+
+def _egress_context(kind: str = "organization"):
+    """Trusted egress context mirroring tests/test_p0g4c_video_egress.py."""
+    from novelvideo.egress_context import TrustedEgressContext
+    from novelvideo.ports.authz import BillingPrincipal
+    from novelvideo.ports.model_credentials import CredentialReference
+
+    principal_id = {
+        "organization": "org-1",
+        "platform": "user-1",
+        "local": "local-worker",
+    }[kind]
+    return TrustedEgressContext(
+        envelope_id="envelope-1",
+        project_id="project-1",
+        task_type="single_video",
+        requester_user_id="user-1",
+        root_task_id="root-1",
+        admission_id="admission-1",
+        admitted_at="2026-08-03T04:05:00Z",
+        membership_id="membership-1" if kind == "organization" else None,
+        authz_version=11,
+        billing_principal=BillingPrincipal(kind=kind, id=principal_id),
+        credential=CredentialReference(
+            source=kind,
+            credential_id={
+                "organization": "credential-1",
+                "platform": "platform-newapi",
+                "local": "local-video",
+            }[kind],
+            key_version=7 if kind == "organization" else 1,
+            org_id="org-1" if kind == "organization" else None,
+        ),
+    )
+
+
+def test_create_muse2api_allows_organization_and_local_context(monkeypatch) -> None:
+    """CE exemption: org/local egress context must not block the direct branch."""
+    monkeypatch.setenv("MUSE2API_KEY", "test-muse2api-key")
+    from novelvideo.generators.video_generator import (
+        Muse2ApiVideoGenerator,
+        create_video_generator,
+    )
+
+    for kind in ("organization", "local"):
+        generator = create_video_generator(
+            "muse2api_muse-video",
+            api_key="test-muse2api-key",
+            egress_context=_egress_context(kind),
+        )
+        assert isinstance(generator, Muse2ApiVideoGenerator)
+
+
+def test_create_muse2api_allows_ambient_organization_context(monkeypatch) -> None:
+    """Same exemption when the context is bound only by the request scope."""
+    monkeypatch.setenv("MUSE2API_KEY", "test-muse2api-key")
+    from novelvideo.generators.video_generator import (
+        Muse2ApiVideoGenerator,
+        create_video_generator,
+    )
+    from novelvideo.model_gateway_runtime import model_gateway_request_scope
+
+    for kind in ("organization", "local"):
+        with model_gateway_request_scope(_egress_context(kind)):
+            generator = create_video_generator(
+                "muse2api_muse-video", api_key="test-muse2api-key"
+            )
+        assert isinstance(generator, Muse2ApiVideoGenerator)
+
+
+def test_create_huimeng_still_denies_organization_context() -> None:
+    """The exemption is muse2api-only: huimeng direct still raises."""
+    from novelvideo.generators.video_generator import (
+        VideoEgressError,
+        create_video_generator,
+    )
+
+    for kind in ("organization", "local"):
+        with pytest.raises(VideoEgressError) as exc_info:
+            create_video_generator(
+                "huimeng_seedance-1.0-pro-fast",
+                egress_context=_egress_context(kind),
+                client=object(),
+            )
+        assert exc_info.value.code == "ORG_EGRESS_DENIED"
+
+
+async def test_generate_muse2api_allows_organization_context(
+    _muse2api_env, tmp_path: Path
+) -> None:
+    """The generate()-level gate is exempted too, for both explicit and ambient context."""
+    from novelvideo.model_gateway_runtime import model_gateway_request_scope
+
+    factory, _calls = _muse2api_env
+    factory.script.extend(
+        [
+            _FakeResponse(200, {"task_id": "task_egress", "status": "queued"}),
+            _FakeResponse(200, {"status": "completed", "url": MEDIA_URL}),
+        ]
+    )
+    result = await _generator().generate(
+        image_path="https://example.com/frame.jpg",
+        prompt="pan left",
+        output_path=str(tmp_path / "video.mp4"),
+        duration=5,
+        poll_interval=0,
+        egress_context=_egress_context("organization"),
+    )
+    assert result.status.value == "done"
+    assert result.task_id == "task_egress"
+
+    # Ambient-bound local context (no explicit kwarg) must not block either.
+    factory.script.extend(
+        [
+            _FakeResponse(200, {"task_id": "task_egress_2", "status": "queued"}),
+            _FakeResponse(200, {"status": "completed", "url": MEDIA_URL}),
+        ]
+    )
+    with model_gateway_request_scope(_egress_context("local")):
+        result = await _generator().generate(
+            image_path="https://example.com/frame.jpg",
+            prompt="pan left",
+            output_path=str(tmp_path / "video2.mp4"),
+            duration=5,
+            poll_interval=0,
+        )
+    assert result.status.value == "done"
+    assert result.task_id == "task_egress_2"
