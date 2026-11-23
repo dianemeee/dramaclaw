@@ -15,10 +15,18 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   PROJECT_SECTION_ROUTES,
   projectModeFromPath,
   projectSectionFromPath,
 } from "@/components/layout/project-navigation-routes";
+import { useProject, useUpdateProject } from "@/lib/queries/projects";
 import { normalizeLastEpisodeLocation, useEpisodeWorkbenchStore } from "@/stores/episode-workbench-store";
 import { isRememberedSection, useProjectNavStore } from "@/stores/project-nav-store";
 import { useAllProjectSummaries } from "@/lib/queries/projects";
@@ -31,6 +39,14 @@ import { useFreezoneViewMode, type FreezoneViewMode } from "@/features/freezone/
 import { PROJECT_SUBMENU_HEIGHT, PROJECT_SUBMENU_TOP_GAP, PROJECT_SUBMENU_BOTTOM_GAP } from "./layout-metrics";
 
 const XIAJI_DEFAULT_ROUTE = PROJECT_SECTION_ROUTES.ingest;
+
+// Narration / audio language options for the Freezone canvas picker.
+// Same values and labels as the Series ingest settings page.
+const CONTENT_LANGUAGE_OPTIONS: { value: string; labelKey: string }[] = [
+  { value: "id", labelKey: "ingest.contentLanguages.id" },
+  { value: "en", labelKey: "ingest.contentLanguages.en" },
+  { value: "zh", labelKey: "ingest.contentLanguages.zh" },
+];
 const PROJECT_SUBMENU_CLASS = "backdrop-blur-tap flex items-center gap-3 whitespace-nowrap rounded-full border border-white/[0.08] bg-[rgb(var(--surface-rgb)/0.78)] px-3.5 py-px text-sidebar-foreground";
 const PROJECT_SUBMENU_ITEM_CLASS = "flex h-[26px] items-center px-1.5 text-[11px] font-semibold transition-colors duration-150 ease-[var(--ease-out-quint)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring";
 type ProjectSubmenuPlacement = "flow" | "overlay";
@@ -65,12 +81,21 @@ function ProjectSubmenuRow({
   );
 }
 
-export function ProjectXiahuaMenu() {
+export function ProjectXiahuaMenu({ project }: { project: string }) {
   const { t } = useTranslation();
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const [viewMode, setViewMode] = useFreezoneViewMode();
+  const { data: projectRes } = useProject(project);
+  const updateProject = useUpdateProject(project);
   if (projectModeFromPath(pathname) !== "xiahua") return null;
   const modes: FreezoneViewMode[] = ["workflow", "board"];
+  // Narration / audio language for this project (id / en / zh). The same
+  // project setting the Series ingest page edits; Freezone has no other
+  // surface for it, so it lives here next to the canvas view switcher.
+  // The backend reads it from the project config: clip-prompt narration
+  // is written in this language and the audio node picks its preset voice
+  // from it (id → id-ID-GadisNeural, en → en-US-AriaNeural).
+  const contentLanguage = projectRes?.data?.content_language ?? "id";
 
   return (
     <ProjectSubmenuRow placement="overlay">
@@ -94,6 +119,35 @@ export function ProjectXiahuaMenu() {
               viewMode === mode ? "text-foreground" : "text-muted-foreground hover:text-foreground")}
           >{t(`freezone.viewMode.${mode}`)}</button>
         ))}
+        <span aria-hidden className="mx-0.5 h-4 w-px shrink-0 bg-white/10" />
+        <Select
+          value={contentLanguage}
+          onValueChange={(val) => {
+            if (val === contentLanguage || updateProject.isPending) return;
+            updateProject.mutate({ content_language: val as "id" | "en" | "zh" });
+          }}
+          disabled={updateProject.isPending}
+        >
+          <SelectTrigger
+            className="h-[26px] gap-1 border-0 bg-transparent px-1.5 text-[11px] font-semibold text-muted-foreground shadow-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-sidebar-ring data-[size=default]:h-[26px] [&_svg]:size-3"
+            aria-label={t("ingest.contentLanguage")}
+            title={t("ingest.contentLanguage")}
+          >
+            <SelectValue placeholder={t("ingest.contentLanguage")}>
+              {(val: string) => {
+                const opt = CONTENT_LANGUAGE_OPTIONS.find((o) => o.value === val);
+                return opt ? t(opt.labelKey) : val;
+              }}
+            </SelectValue>
+          </SelectTrigger>
+          <SelectContent align="center" sideOffset={8}>
+            {CONTENT_LANGUAGE_OPTIONS.map((opt) => (
+              <SelectItem key={opt.value} value={opt.value}>
+                {t(opt.labelKey)}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </ProjectSubmenu>
     </ProjectSubmenuRow>
   );

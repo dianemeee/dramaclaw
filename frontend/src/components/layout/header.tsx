@@ -446,7 +446,7 @@ export function Header({ ambientBackground = false }: { ambientBackground?: bool
         </div>
       </header>
       {project ? <ProjectXiajiMenu project={project} /> : null}
-      {project ? <ProjectXiahuaMenu /> : null}
+      {project ? <ProjectXiahuaMenu project={project} /> : null}
       {accountPanelOpen
         ? createPortal(
             <AccountPanel
