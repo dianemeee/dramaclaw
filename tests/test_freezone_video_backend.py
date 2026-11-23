@@ -410,7 +410,19 @@ def test_video_model_options_and_resolution_work() -> None:
     assert "newapi_grok-video-channel" not in names
     assert ids == set(names)
     assert api_models == set(names)
-    assert all(item["providerId"] == "newapi" for item in options)
+    assert all(
+        item["providerId"] == "newapi"
+        for item in options
+        if item["id"] != "muse2api_muse-video"
+    )
+    muse2api_option = next(
+        item for item in options if item["id"] == "muse2api_muse-video"
+    )
+    assert muse2api_option["providerId"] == "muse2api"
+    assert muse2api_option["provider"] == "muse2api"
+    assert muse2api_option["minDuration"] is None
+    assert muse2api_option["maxDuration"] is None
+    assert "720p" in muse2api_option["resolutionOptions"]
     assert "Seedance1.0 Pro Fast" in labels
     assert "Seedance1.5 Pro" in labels
     assert "Seedance2.0 Fast" in labels

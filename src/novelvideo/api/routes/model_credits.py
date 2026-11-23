@@ -178,14 +178,17 @@ def _video_backend_cost_model(backend: str) -> str:
     from novelvideo.generators.huimengi import parse_huimeng_video_backend
     from novelvideo.generators.video_generator import (
         VideoBackend,
+        muse2api_video_backend_options,
         newapi_video_backend_options,
+        parse_muse2api_video_backend,
         parse_newapi_video_backend,
     )
 
     newapi_model = parse_newapi_video_backend(clean_backend)
+    muse2api_model = parse_muse2api_video_backend(clean_backend)
     huimeng_model = parse_huimeng_video_backend(clean_backend)
     backend_enum: VideoBackend | None = None
-    if not newapi_model and not huimeng_model:
+    if not newapi_model and not muse2api_model and not huimeng_model:
         try:
             backend_enum = VideoBackend(clean_backend)
         except ValueError:
@@ -195,15 +198,19 @@ def _video_backend_cost_model(backend: str) -> str:
                 clean_backend,
                 {
                     **newapi_video_backend_options(),
+                    **muse2api_video_backend_options(),
                     **huimeng_video_backend_options(),
                 },
                 label_name="video backend",
             )
             newapi_model = parse_newapi_video_backend(clean_backend)
+            muse2api_model = parse_muse2api_video_backend(clean_backend)
             huimeng_model = parse_huimeng_video_backend(clean_backend)
 
     if newapi_model:
         return newapi_model
+    if muse2api_model:
+        return muse2api_model
     if huimeng_model:
         return huimeng_model
 

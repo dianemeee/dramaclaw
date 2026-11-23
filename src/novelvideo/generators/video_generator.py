@@ -1444,6 +1444,325 @@ class GrokVideoGenerator(VideoGeneratorBase):
         )
 
 
+class Muse2ApiVideoGenerator(VideoGeneratorBase):
+    """Direct muse2api video generator (bypasses the NewAPI gateway poller).
+
+    Talks straight to muse2api's own endpoints — POST ``{endpoint}/videos``
+    then poll GET ``{endpoint}/videos/{task_id}`` — instead of going through
+    the NewAPI gateway (``/video/generations``), whose poller stalls at 99%
+    even though muse2api itself completes the video. The first frame still
+    goes through the Cloudinary media relay, reusing
+    ``NewApiVideoGenerator._relay_frame_input``.
+
+    The API key is read from the ``MUSE2API_KEY`` environment variable only
+    (provisioned into the api container at deploy time); it is never
+    hard-coded. The base URL defaults to ``https://muse.sukablyat.my.id/v1``
+    and can be overridden with ``MUSE2API_BASE_URL``.
+
+    muse2api has no mode concept, so none of the NewAPI mode-contract
+    helpers (``enforce_newapi_video_mode_contract``,
+    ``_canonicalize_video_payload``) are used here.
+    """
+
+    MODEL = "muse-video"
+    DEFAULT_ENDPOINT = "https://muse.sukablyat.my.id/v1"
+
+    def __init__(
+        self,
+        model: str = MODEL,
+        api_key: Optional[str] = None,
+        endpoint: Optional[str] = None,
+        resolution: str = "720p",
+        # Accepted for caller compatibility (freezone/workflow pass these);
+        # muse2api has no mode/schema concept, so they are ignored.
+        generate_audio: Optional[bool] = None,
+        model_params: Optional[dict[str, Any]] = None,
+        request_schema: Optional[dict[str, Any]] = None,
+        egress_context: object | None = None,
+        **_ignored: Any,
+    ):
+        self.api_key = api_key or os.environ.get("MUSE2API_KEY")
+        self.endpoint = (
+            endpoint or os.environ.get("MUSE2API_BASE_URL") or self.DEFAULT_ENDPOINT
+        ).rstrip("/")
+        self.model = model or self.MODEL
+        self.resolution = resolution or "720p"
+
+        if not self.api_key:
+            raise ValueError("MUSE2API_KEY must be set for Muse2API video generation")
+
+    @property
+    def headers(self) -> dict[str, str]:
+        return {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json",
+        }
+
+    @staticmethod
+    def _client_timeout() -> aiohttp.ClientTimeout:
+        return aiohttp.ClientTimeout(total=NEWAPI_VIDEO_HTTP_TIMEOUT_SECONDS)
+
+    async def _post_json(self, url: str, payload: dict) -> tuple[int, dict]:
+        async with aiohttp.ClientSession(timeout=self._client_timeout()) as session:
+            async with session.post(url, json=payload, headers=self.headers) as resp:
+                try:
+                    return resp.status, await resp.json()
+                except Exception:
+                    return resp.status, {"_raw": await resp.text()}
+
+    async def _get_json(self, url: str) -> tuple[int, dict]:
+        async with aiohttp.ClientSession(timeout=self._client_timeout()) as session:
+            async with session.get(url, headers=self.headers) as resp:
+                try:
+                    return resp.status, await resp.json()
+                except Exception:
+                    return resp.status, {"_raw": await resp.text()}
+
+    async def _download_video(self, url: str, output_path: str) -> VideoDeliveryReceipt:
+        from novelvideo.utils.media_download import download_to_path
+
+        # muse2api result URLs (e.g. /v1/media/<name>.mp4) live on the
+        # muse2api host itself and require the token; public result URLs
+        # must never receive the credential.
+        headers: dict[str, str] | None = None
+        if self.api_key:
+            endpoint_host = urllib.parse.urlsplit(self.endpoint).hostname
+            if endpoint_host and urllib.parse.urlsplit(url).hostname == endpoint_host:
+                headers = {"Authorization": f"Bearer {self.api_key}"}
+        return await download_to_path(url, output_path, headers=headers)
+
+    @staticmethod
+    def _extract_video_url(task: dict) -> str:
+        for candidate in (
+            task.get("url"),
+            (task.get("video") or {}).get("url")
+            if isinstance(task.get("video"), dict)
+            else None,
+            (task.get("result") or {}).get("url")
+            if isinstance(task.get("result"), dict)
+            else None,
+        ):
+            if isinstance(candidate, str) and candidate.strip():
+                return candidate.strip()
+        return ""
+
+    async def generate(
+        self,
+        image_path: str,
+        prompt: str,
+        output_path: str,
+        aspect_ratio: str = "9:16",
+        duration: float = 5.0,
+        poll_interval: float = 5.0,
+        max_polls: int = 180,
+        on_log: Optional[Callable[[str], None]] = None,
+        on_progress: Optional[Callable[[float], None]] = None,
+        last_frame_path: Optional[str] = None,
+        **kwargs,
+    ) -> VideoGenResult:
+        _deny_direct_organization_video(kwargs)
+
+        def log(msg: str):
+            if on_log:
+                on_log(msg)
+
+        def progress(value: float):
+            if on_progress:
+                on_progress(value)
+
+        if last_frame_path:
+            return VideoGenResult(
+                status=VideoGenStatus.FAILED,
+                error="muse2api does not support keyframe/首尾帧模式",
+            )
+
+        from novelvideo.video_duration import normalize_video_duration_for_backend
+
+        duration = normalize_video_duration_for_backend(
+            "muse2api_muse-video", duration
+        )
+        ratio = aspect_ratio if ":" in aspect_ratio else "9:16"
+
+        project_output_dir = kwargs.get("project_output_dir")
+        tracking_episode = kwargs.get("episode")
+        tracking_beat_num = kwargs.get("beat_num")
+        tracking_task_type = kwargs.get("task_type", "")
+        tracking_cost_estimate = kwargs.get("cost_estimate")
+
+        def record_accepted(request_id: str):
+            if not project_output_dir or not request_id:
+                return
+            try:
+                record_video_request(
+                    project_output_dir=project_output_dir,
+                    request_id=request_id,
+                    provider="muse2api",
+                    model_name=self.model,
+                    episode=tracking_episode,
+                    beat_num=tracking_beat_num,
+                    task_type=tracking_task_type,
+                    duration_seconds=float(duration),
+                    cost_estimate=tracking_cost_estimate,
+                )
+            except Exception as exc:
+                log(f"记账失败(accepted): {exc}")
+
+        def update_request_status(
+            request_id: str, status: str, error_message: str | None = None
+        ):
+            if not project_output_dir or not request_id:
+                return
+            try:
+                update_video_request_status(
+                    project_output_dir=project_output_dir,
+                    request_id=request_id,
+                    status=status,
+                    error_message=error_message,
+                )
+            except Exception as exc:
+                log(f"记账失败({status}): {exc}")
+
+        # First frame: public URL passes through; local file / data URL goes
+        # through the Cloudinary media relay (same as NewAPI).
+        try:
+            if image_path and image_path.startswith(("http://", "https://")):
+                image_url = image_path
+            elif image_path and (
+                image_path.startswith("data:") or os.path.exists(image_path)
+            ):
+                image_url = await NewApiVideoGenerator._relay_frame_input(image_path)
+            else:
+                return VideoGenResult(
+                    status=VideoGenStatus.FAILED,
+                    error=f"First frame not found: {image_path}",
+                )
+        except Exception as exc:
+            return VideoGenResult(
+                status=VideoGenStatus.FAILED,
+                error=f"media relay upload failed: {exc}",
+            )
+
+        request_body = {
+            "model": self.model,
+            "prompt": prompt,
+            "image": image_url,
+            "duration": int(duration),
+            "aspect_ratio": ratio,
+            "resolution": self.resolution,
+        }
+
+        log(
+            f"正在提交 muse2api 视频生成任务 ({self.model}, {duration}s, "
+            f"{self.resolution})..."
+        )
+        progress(0.1)
+
+        try:
+            reservation_id = await _reserve_video_model_call(
+                self.model,
+                source="muse2api_video_generation",
+                resolution=self.resolution,
+                duration_seconds=duration,
+            )
+        except Exception as exc:
+            log(f"计费预留失败，继续生成: {exc}")
+            reservation_id = ""
+
+        async def fail(error: str, task_id: str = ""):
+            if reservation_id:
+                await _refund_video_model_call(
+                    reservation_id,
+                    source="muse2api_video_generation",
+                    error=error[:200],
+                    provider_task_id=task_id,
+                )
+            if task_id:
+                update_request_status(task_id, "failed", error)
+            return VideoGenResult(
+                status=VideoGenStatus.FAILED,
+                error=error,
+                task_id=task_id or None,
+            )
+
+        try:
+            status_code, data = await self._post_json(
+                f"{self.endpoint}/videos", request_body
+            )
+        except Exception as exc:
+            return await fail(
+                f"Submit exception: {exc}",
+            )
+
+        if status_code < 200 or status_code >= 300:
+            return await fail(
+                f"Submit failed: HTTP {status_code} - {str(data)[:200]}",
+            )
+
+        task_id = str(data.get("task_id") or data.get("id") or "").strip()
+        if not task_id:
+            return await fail(f"No task_id in response: {data}")
+
+        record_accepted(task_id)
+        log(f"任务已提交: {task_id}")
+        progress(0.2)
+
+        for poll_count in range(max_polls):
+            try:
+                status_code, data = await self._get_json(
+                    f"{self.endpoint}/videos/{task_id}"
+                )
+            except Exception:
+                await asyncio.sleep(poll_interval)
+                continue
+            if status_code != 200:
+                await asyncio.sleep(poll_interval)
+                continue
+
+            status_str = str(data.get("status") or "").lower()
+            progress(0.2 + (poll_count / max(max_polls, 1)) * 0.7)
+
+            if status_str in {"completed", "succeeded", "success", "done"}:
+                video_url = self._extract_video_url(data)
+                if not video_url:
+                    return await fail("No video URL in response", task_id)
+                log("视频生成完成，正在下载...")
+                progress(0.9)
+                try:
+                    await self._download_video(video_url, output_path)
+                except Exception as exc:
+                    return await fail(f"Download failed: {exc}", task_id)
+                if reservation_id:
+                    await _confirm_video_model_call(
+                        model=self.model,
+                        reservation_id=reservation_id,
+                        provider_task_id=task_id,
+                    )
+                update_request_status(task_id, "downloaded")
+                progress(1.0)
+                return VideoGenResult(
+                    status=VideoGenStatus.DONE,
+                    video_url=video_url,
+                    video_path=output_path,
+                    task_id=task_id,
+                    provider_task_id=task_id,
+                    duration_seconds=float(duration),
+                )
+
+            if status_str in {"failed", "expired", "error", "cancelled"}:
+                return await fail(
+                    f"muse2api video generation {status_str}",
+                    task_id,
+                )
+
+            if poll_count % 6 == 0:
+                log(
+                    f"正在生成中... ({status_str or 'pending'}, {poll_count}/{max_polls})"
+                )
+            await asyncio.sleep(poll_interval)
+
+        return await fail("Generation timeout", task_id)
+
+
 async def translate_prompt_to_english(prompt: str) -> str:
     """将中文视频提示词翻译并优化为 WAN I2V 最佳格式。
 
@@ -4690,6 +5009,11 @@ class ComfyUIVideoGenerator(VideoGeneratorBase):
 
 
 NEWAPI_VIDEO_BACKEND_PREFIX = "newapi_"
+MUSE2API_VIDEO_BACKEND_PREFIX = "muse2api_"
+MUSE2API_VIDEO_MODELS = ("muse-video",)
+MUSE2API_VIDEO_DISPLAY_LABELS = {
+    "muse-video": "Muse Video (direct)",
+}
 NEWAPI_VIDEO_DISPLAY_LABELS = {
     "seedance-1.0-pro-fast": "Seedance1.0 Pro Fast",
     "seedance-1.5-pro": "Seedance1.5 Pro",
@@ -4718,6 +5042,22 @@ def parse_newapi_video_backend(backend: str | None) -> str | None:
         return NEWAPI_VIDEO_MODEL
     if lowered.startswith(NEWAPI_VIDEO_BACKEND_PREFIX):
         model = value[len(NEWAPI_VIDEO_BACKEND_PREFIX) :].strip()
+        return model or None
+    return None
+
+
+def parse_muse2api_video_backend(backend: str | None) -> str | None:
+    """Parse a ``muse2api_<model>`` backend into its muse2api model name.
+
+    Mirrors :func:`parse_newapi_video_backend`; ``muse2api`` alone resolves
+    to the default ``muse-video`` model.
+    """
+    value = str(backend or "").strip()
+    lowered = value.lower()
+    if lowered == "muse2api":
+        return Muse2ApiVideoGenerator.MODEL
+    if lowered.startswith(MUSE2API_VIDEO_BACKEND_PREFIX):
+        model = value[len(MUSE2API_VIDEO_BACKEND_PREFIX) :].strip()
         return model or None
     return None
 
@@ -4759,6 +5099,16 @@ def newapi_video_backend_options(
             model, model
         )
         for model in models
+    }
+
+
+def muse2api_video_backend_options() -> dict[str, str]:
+    """Direct muse2api backends (``muse2api_<model>``), bypassing NewAPI."""
+    return {
+        f"{MUSE2API_VIDEO_BACKEND_PREFIX}{model}": MUSE2API_VIDEO_DISPLAY_LABELS.get(
+            model, model
+        )
+        for model in MUSE2API_VIDEO_MODELS
     }
 
 
@@ -4840,6 +5190,7 @@ def create_video_generator(
     Args:
         backend: 视频后端选择
             - newapi_<model>: newAPI 视频模型，如 newapi_seedance-1.0-pro-fast
+            - muse2api_<model>: 直连 muse2api 视频模型，如 muse2api_muse-video
             - huimeng_<model>: HuiMeng 视频模型，如 huimeng_seedance-2.0-fast
             - SEEDANCE_FAST: Seedance 1.0 Pro Fast（火山方舟）
             - SEEDANCE_PRO: Seedance 1.5 Pro 有声（火山方舟）
@@ -4861,6 +5212,8 @@ def create_video_generator(
         VOLCENGINE_VISUAL_API_KEY: Seedance API 密钥
         COMFYUI_ADDRESS: ComfyUI 服务器地址
         XAI_API_KEY: Grok 视频生成 API 密钥
+        MUSE2API_KEY: 直连 muse2api 视频生成 API 密钥
+        MUSE2API_BASE_URL: 直连 muse2api 基础 URL（默认 https://muse.sukablyat.my.id/v1）
     """
     from novelvideo.config import SEEDANCE_FAST_MODEL, SEEDANCE_PRO_MODEL
 
@@ -4874,6 +5227,13 @@ def create_video_generator(
     newapi_model = parse_newapi_video_backend(backend_str)
     if newapi_model:
         return NewApiVideoGenerator(model=newapi_model, **kwargs)
+
+    muse2api_model = parse_muse2api_video_backend(backend_str)
+    if muse2api_model:
+        if _direct_video_context_denied(egress_context):
+            raise VideoEgressError("ORG_EGRESS_DENIED")
+        kwargs.pop("egress_context", None)
+        return Muse2ApiVideoGenerator(model=muse2api_model, **kwargs)
 
     from novelvideo.generators.huimengi import parse_huimeng_video_backend
 

@@ -1669,7 +1669,9 @@ def _api_video_backend_options() -> list[VideoBackendOption]:
     from novelvideo.config import NEWAPI_VIDEO_DURATION_BOUNDS
     from novelvideo.generators.video_generator import (
         NewApiVideoGenerator,
+        muse2api_video_backend_options,
         newapi_video_backend_options,
+        parse_muse2api_video_backend,
         parse_newapi_video_backend,
     )
 
@@ -1680,9 +1682,10 @@ def _api_video_backend_options() -> list[VideoBackendOption]:
     }
     options = {
         value: label
-        for value, label in newapi_video_backend_options(
-            include_seedance2_variants=True
-        ).items()
+        for value, label in {
+            **newapi_video_backend_options(include_seedance2_variants=True),
+            **muse2api_video_backend_options(),
+        }.items()
         if value not in hidden_mainline_backends
     }
     duration_bounds = NewApiVideoGenerator._parse_duration_bounds_config(
@@ -1691,7 +1694,9 @@ def _api_video_backend_options() -> list[VideoBackendOption]:
     default_backend = VideoGenerateRequest().video_backend
     backend_options: list[VideoBackendOption] = []
     for value, label in options.items():
-        model = parse_newapi_video_backend(value)
+        model = parse_newapi_video_backend(value) or parse_muse2api_video_backend(
+            value
+        )
         bounds = duration_bounds.get(model or "")
         if model == "seedance-2.0-mini" and not bounds:
             bounds = (4, 15)

@@ -298,14 +298,25 @@ def _freezone_newapi_video_options() -> dict[str, str]:
     return ordered
 
 
+def _freezone_muse2api_video_options() -> dict[str, str]:
+    from novelvideo.generators.video_generator import muse2api_video_backend_options
+
+    return dict(muse2api_video_backend_options())
+
+
 def get_freezone_video_model_options() -> list[dict[str, Any]]:
     data: list[dict[str, Any]] = []
-    for backend, label in _freezone_newapi_video_options().items():
+    combined_options = {
+        **_freezone_newapi_video_options(),
+        **_freezone_muse2api_video_options(),
+    }
+    for backend, label in combined_options.items():
+        provider = "muse2api" if backend.startswith("muse2api_") else "newapi"
         duration_bounds = freezone_video_duration_bounds(backend)
         item = {
             "id": backend,
-            "providerId": "newapi",
-            "provider": "newapi",
+            "providerId": provider,
+            "provider": provider,
             "apiModel": backend,
             "api_model": backend,
             "label": label,
@@ -335,7 +346,12 @@ def get_freezone_video_model_options() -> list[dict[str, Any]]:
 
 
 def get_freezone_video_model_names() -> list[str]:
-    return list(_freezone_newapi_video_options().keys())
+    return list(
+        {
+            **_freezone_newapi_video_options(),
+            **_freezone_muse2api_video_options(),
+        }.keys()
+    )
 
 
 def resolve_freezone_video_backend(model: str | None) -> str:
@@ -364,10 +380,13 @@ def resolve_freezone_video_backend(model: str | None) -> str:
     if label_alias:
         return label_alias
 
-    from novelvideo.generators.video_generator import parse_newapi_video_backend
+    from novelvideo.generators.video_generator import (
+        parse_muse2api_video_backend,
+        parse_newapi_video_backend,
+    )
 
     if (
-        parse_newapi_video_backend(text)
+        (parse_newapi_video_backend(text) or parse_muse2api_video_backend(text))
         and text not in FREEZONE_DISABLED_VIDEO_BACKENDS
     ):
         return text
